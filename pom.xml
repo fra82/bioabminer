@@ -1,0 +1,174 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>es.imim.ibi</groupId>
+	<artifactId>bioab</artifactId>
+	<version>0.1</version>
+	<name>BioAb Miner (Biomedical Abbreviation Miner)</name>
+	<description>Extraction of abbreviations and long forms from biomedical texts</description>
+
+	<properties>
+		<jdk.version>1.8</jdk.version>
+		<builddir>/home/ronzano/Eclipse_WS/mlfeats/target</builddir>
+		<project.build.directory>/home/ronzano/Eclipse_WS/mlfeats/target</project.build.directory>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+
+	<repositories>
+		<repository>
+			<id>backingdata-repo-core</id>
+			<name>Backingdata repository</name>
+			<url>http://backingdata.org/mavenRepo/</url>
+		</repository>
+		<repository>
+			<id>maven-central-repo</id>
+			<name>Maven Central Repository</name>
+			<url>http://repo1.maven.org/maven2/</url>
+		</repository>
+	</repositories>
+
+
+	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<targetPath>${project.build.directory}/classes</targetPath>
+				<!-- <includes> <include>log4j.properties</include> </includes> -->
+			</resource>
+		</resources>
+
+		<plugins>
+			<!-- Compiler directives - compatibility -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.3</version>
+				<configuration>
+					<source>${jdk.version}</source>
+					<target>${jdk.version}</target>
+				</configuration>
+			</plugin>
+
+			<!-- The configuration of maven-assembly-plugin Assemble files in a ZIP 
+				package - as specified in Specified in src/main/assembly/assembly.xml Bind 
+				to packaging phase -->
+			<!-- Refer: http://www.petrikainulainen.net/programming/tips-and-tricks/creating-a-runnable-binary-distribution-with-maven-assembly-plugin/ -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<descriptors>
+						<descriptor>src/main/assembly/assembly.xml</descriptor>
+					</descriptors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id> <!-- this is used for inheritance merges -->
+						<phase>package</phase> <!-- bind to the packaging phase -->
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Generate a JAR with a main class manifest file -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.3.1</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+							<!-- <mainClass></mainClass> -->
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+
+			<!-- Copy all the dependency libs in lib folder -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy</id>
+						<phase>install</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>
+								${builddir}/lib
+							</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Copy one or more directories in the classpath before compiling Bind 
+				to the validate phase REF: http://stackoverflow.com/questions/19409220/copying-multiple-resource-directories-to-independent-target-directories-with-mav 
+				<plugin> <artifactId>maven-resources-plugin</artifactId> <version>2.6</version> 
+				<executions> <execution> <id>copy-resources-1</id> <phase>validate</phase> 
+				<goals> <goal>copy-resources</goal> </goals> <configuration> <outputDirectory>${basedir}/target/classes</outputDirectory> 
+				<resources> <resource> <directory>/home/francesco/Desktop/SVN_DR_INVENTOR/software/DrInventorLibrary/resources</directory> 
+				</resource> </resources> </configuration> </execution> <execution> <id>copy-resources-2</id> 
+				<phase>validate</phase> <goals> <goal>copy-resources</goal> </goals> <configuration> 
+				<outputDirectory>${basedir}/target/ughh</outputDirectory> <resources> <resource> 
+				<directory>ughh</directory> <filtering>true</filtering> </resource> </resources> 
+				</configuration> </execution> </executions> </plugin> -->
+		</plugins>
+	</build>
+
+
+	<dependencies>
+
+		<!-- GATE library imported by means of the gateutils library -->
+		<dependency>
+			<groupId>org.backingdata.nlp</groupId>
+			<artifactId>gateutils</artifactId>
+			<version>0.3</version>
+		</dependency>
+
+		<!-- Freeling 4.0 (from Backingdata maven repo) -->
+		<dependency>
+			<groupId>edu.upc</groupId>
+			<artifactId>freeling</artifactId>
+			<version>4.0</version>
+		</dependency>
+
+		<!-- CRFsuite java wrapper -->
+		<dependency>
+			<groupId>com.github.vinhkhuc</groupId>
+			<artifactId>jcrfsuite</artifactId>
+			<version>0.6.1</version>
+		</dependency>
+
+		<!-- Machine Learning feature engineering library -->
+		<dependency>
+			<groupId>org.backingdata</groupId>
+			<artifactId>mlfeats</artifactId>
+			<version>0.1</version>
+		</dependency>
+
+		<!-- NLP-utils -->
+		<dependency>
+			<groupId>org.backingdata.nlp</groupId>
+			<artifactId>nlp-utils</artifactId>
+			<version>1.0</version>
+		</dependency>
+
+		<!-- Guava -->
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>23.0</version>
+		</dependency>
+
+
+	</dependencies>
+</project>
