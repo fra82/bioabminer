@@ -19,9 +19,6 @@ public class BioABexample {
 	
 	public static void main(String[] args) {
 
-		CRFsuite.evaluateTagger(GenericUtil.readUTF8stringFromFile("/home/ronzano/Desktop/Hackathon_PLN/CRFsuite_FILES/BOI_SF_abbrv_v_BARR17_train_and_test_sentScop_true.crfstrain"), null, 10);
-		
-		/*
 		// Initialize BioAB Miner by specifying the full path of the property file
 		BioABminer.init("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
 		
@@ -49,7 +46,7 @@ public class BioABexample {
 		BioABminer.extractAbbreviations(docToParse);
 		System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + inputGATEdoc);
 		GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/BioABdocument2.xml");
-		*/
+		
 	}
 	
 }
