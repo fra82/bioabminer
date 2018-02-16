@@ -83,6 +83,7 @@ public class FreelingParserUtilities {
 
 		FeatureMap FreelingParserfm = Factory.newFeatureMap();
 		FreelingParserfm.put("analysisLang", documentLanguage);
+		FreelingParserfm.put("addAnalysisLangToAnnSetName", "true");
 		if(!StringUtils.isEmpty(sentenceAnnSet) && !StringUtils.isEmpty(sentenceAnnType)) {
 			FreelingParserfm.put("sentenceAnnotationSetToAnalyze", sentenceAnnSet);
 			FreelingParserfm.put("sentenceAnnotationTypeToAnalyze", sentenceAnnType);
@@ -168,6 +169,7 @@ public class FreelingParserUtilities {
 
 		FeatureMap FreelingParserfm = Factory.newFeatureMap();
 		FreelingParserfm.put("analysisLang", documentLanguage);
+		FreelingParserfm.put("addAnalysisLangToAnnSetName", "true");
 		FreelingParser FreelingParser_Resource = null;
 		Gate.getCreoleRegister().registerComponent(FreelingParser.class);
 		FreelingParser_Resource = (FreelingParser) gate.Factory.createResource(FreelingParser.class.getName(), FreelingParserfm);
@@ -233,6 +235,7 @@ public class FreelingParserUtilities {
 
 		FeatureMap FreelingParserfm = Factory.newFeatureMap();
 		FreelingParserfm.put("analysisLang", documentLanguage);
+		FreelingParserfm.put("addAnalysisLangToAnnSetName", "true");
 		FreelingParser FreelingParser_Resource = null;
 		Gate.getCreoleRegister().registerComponent(FreelingParser.class);
 		FreelingParser_Resource = (FreelingParser) gate.Factory.createResource(FreelingParser.class.getName(), FreelingParserfm);

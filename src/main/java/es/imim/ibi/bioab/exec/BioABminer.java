@@ -77,6 +77,7 @@ public class BioABminer {
 
 				FeatureMap FreelingParserfm = Factory.newFeatureMap();
 				FreelingParserfm.put("analysisLang", "SPA");
+				FreelingParserfm.put("addAnalysisLangToAnnSetName", "true");
 				FreelingParser_Resource = (FreelingParser) gate.Factory.createResource(FreelingParser.class.getName(), FreelingParserfm);
 			}
 			catch (Exception e) {
@@ -90,9 +91,9 @@ public class BioABminer {
 
 				FeatureMap MateParserfm = Factory.newFeatureMap();
 				// Specify the annotation set and type for sentences and tokens identified by Freeling
-				MateParserfm.put("sentenceAnnotationSetToAnalyze", FreelingParser.mainAnnSet);
+				MateParserfm.put("sentenceAnnotationSetToAnalyze", FreelingParser.mainAnnSet + "_SPA");
 				MateParserfm.put("sentenceAnnotationTypeToAnalyze", FreelingParser.sentenceType);
-				MateParserfm.put("tokenAnnotationSetToAnalyze", FreelingParser.mainAnnSet);
+				MateParserfm.put("tokenAnnotationSetToAnalyze", FreelingParser.mainAnnSet + "_SPA");
 				MateParserfm.put("tokenAnnotationTypeToAnalyze", FreelingParser.tokenType);
 
 				// Parse sentences no longler than 120 tokens
@@ -122,12 +123,12 @@ public class BioABminer {
 				Gate.getCreoleRegister().registerComponent(BioABabbrvSpotter.class);
 
 				FeatureMap BioABspotterFm = Factory.newFeatureMap();
-				BioABspotterFm.put("tokenAnnSet", FreelingParser.mainAnnSet);
+				BioABspotterFm.put("tokenAnnSet", FreelingParser.mainAnnSet + "_SPA");
 				BioABspotterFm.put("tokenType", FreelingParser.tokenType);
 				BioABspotterFm.put("tokenLemmaFeat", FreelingParser.tokenType_lemmaFeatName);
 				BioABspotterFm.put("tokenPOSFeat", FreelingParser.tokenType_POSFeatName);
 				BioABspotterFm.put("tokenDepFunctFeat", MateParser.depKindFeat);
-				BioABspotterFm.put("sentenceAnnSet", FreelingParser.mainAnnSet);
+				BioABspotterFm.put("sentenceAnnSet", FreelingParser.mainAnnSet + "_SPA");
 				BioABspotterFm.put("sentenceType", FreelingParser.sentenceType);
 
 				BioABabbrvSpotter_Resource = (BioABabbrvSpotter) gate.Factory.createResource(BioABabbrvSpotter.class.getName(), BioABspotterFm);
@@ -210,7 +211,7 @@ public class BioABminer {
 	 * 
 	 * @return
 	 */
-	public static Document NLPtoolToDocumentFormPDF(Document gateDocToParse) {
+	public static Document NLPtoolToDocument(Document gateDocToParse) {
 
 		if(gateDocToParse != null) {
 			try {

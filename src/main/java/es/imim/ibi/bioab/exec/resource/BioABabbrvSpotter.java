@@ -53,7 +53,6 @@ import third_party.org.chokkan.crfsuite.StringList;
 import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.MultiFilter;
-import weka.filters.unsupervised.attribute.Discretize;
 import weka.filters.unsupervised.attribute.Remove;
 
 
@@ -189,7 +188,7 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 				// Load CRFsuite models
 				try {
 					crfTagger_SF = new CrfTagger(bioABminerResourceFolder + "abbreviationSporttingModels" + File.separator + "BOI_SF_abbrv_v_BARR17_train_and_test_sentScop_true.model");
-					// DISABLED: crfTagger_SFtype = new CrfTagger(bioABminerResourceFolder + "abbreviationSporttingModels" + File.separator + "TO_ADD");
+					crfTagger_SFtype = new CrfTagger(bioABminerResourceFolder + "abbreviationSporttingModels" + File.separator + "BOI_SF_ABBRTYPE_abbrv_v_BARR17_train_and_test_sentScop_true.model");
 					crfTagger_LF = new CrfTagger(bioABminerResourceFolder + "abbreviationSporttingModels" + File.separator + "BOI_LF_abbrv_v_BARR17_train_and_test_sentScop_true.model");
 				} catch (Exception e) {
 					logger.error("\nError loading CRFsuite models ---> " + e.getMessage());
@@ -400,17 +399,20 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 								if(startOffsetBegin_SF == -1) startOffsetBegin_SF = tokenAnn.getStartNode().getOffset();
 								startOffsetEnd_SF = tokenAnn.getEndNode().getOffset();
 							}
-							else if(taggedToken_Label.trim().endsWith("O") && startOffsetBegin_SF != -1 && startOffsetEnd_SF != -1) {
+							else if(taggedToken_Label.trim().endsWith("O")) {
 								// Create annotation
-								try {
-									FeatureMap fm = gate.Factory.newFeatureMap();
-									fm.put("CRFsuite_SF_label", taggedToken_Label);
-									fm.put("CRFsuite_SF_prob", taggedToken_Probability);
-									this.document.getAnnotations(mainAnnSet).add(startOffsetBegin_SF, startOffsetEnd_SF, abbreviationType, fm);
-								} catch (InvalidOffsetException e) {
-									logger.error("Error while creating annotation from " + startOffsetBegin_SF + ", to " + startOffsetEnd_SF + " type " + abbreviationType);
-									e.printStackTrace();
+								if(startOffsetBegin_SF != -1 && startOffsetEnd_SF != -1) {
+									try {
+										FeatureMap fm = gate.Factory.newFeatureMap();
+										fm.put("CRFsuite_SF_label", taggedToken_Label);
+										fm.put("CRFsuite_SF_prob", taggedToken_Probability);
+										this.document.getAnnotations(mainAnnSet).add(startOffsetBegin_SF, startOffsetEnd_SF, abbreviationType, fm);
+									} catch (InvalidOffsetException e) {
+										logger.error("Error while creating annotation from " + startOffsetBegin_SF + ", to " + startOffsetEnd_SF + " type " + abbreviationType);
+										e.printStackTrace();
+									}
 								}
+
 								startOffsetBegin_SF = -1l;
 								startOffsetEnd_SF = -1l;
 							}
@@ -432,6 +434,128 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 			}
 		}
 
+
+		// ***************************************************************
+		// ***************************************************************
+		// ***** Abbreviations spotting (SF type) ************************
+
+		// Apply sequence tagger model to identify SF
+		List<List<Pair<String, Double>>> taggedSentences_SFtype = new ArrayList<List<Pair<String, Double>>>();
+
+		Pair<List<ItemSequence>, List<StringList>> taggingSequences_SFtype = readItemSequencesToTagFromString(CRFsuiteTaggingFile_GLOBAL);
+		for (ItemSequence xseq: taggingSequences_SFtype.getFirst()) {
+			taggedSentences_SFtype.add(crfTagger_SFtype.tag(xseq));
+		}
+
+		// Report annotations back to original document
+		long startOffsetBegin_SFtype = -1l;
+		long startOffsetEnd_SFtype = -1l;
+		String currentType = null;
+		for(int sentenceIdx_SFtype = 0; sentenceIdx_SFtype < taggedSentences_SFtype.size(); sentenceIdx_SFtype++) {
+			// Original annotation IDs
+			Pair<Integer, Annotation> GATEsentenceID = sentenceIdsOrdered.get(sentenceIdx_SFtype);
+			List<Pair<Integer, Annotation>> tokenIDsOfSentence = (GATEsentenceID != null && GATEsentenceID.first != null) ? sentenceIdToTokenListMap.get(GATEsentenceID.first) : new ArrayList<Pair<Integer, Annotation>>();
+			List<Pair<String, Double>> taggedSentenceTokens = taggedSentences_SFtype.get(sentenceIdx_SFtype);
+
+			if(tokenIDsOfSentence.size() != taggedSentenceTokens.size()) {
+				System.out.println("ERROR: Not matching tagged token sequence token num. with sentence token num. "
+						+ " (sentence ID: " + ((GATEsentenceID != null && GATEsentenceID.first != null) ? GATEsentenceID.first : "NULL") + ") - "
+						+ " (sentence text: " + GATEutils.getAnnotationText(GATEsentenceID.second, this.document).orElse("NO TEXT") + ") - "
+						+ " (sentence token num.: " + ((tokenIDsOfSentence != null) ? tokenIDsOfSentence.size() + "" : "NULL") + ") - "
+						+ " (tagged sequence token num.: " + ((taggedSentenceTokens != null) ? taggedSentenceTokens.size() + "" : "NULL") + ") - ");
+			}
+			else {
+				if(taggedSentenceTokens != null) {
+					System.out.println("Sentence number: " + sentenceIdx_SFtype + " with " + tokenIDsOfSentence.size() + " tokens and " + taggedSentenceTokens.size() + " CRFsuite labels.");
+					for(int tokenIdx = 0; tokenIdx < taggedSentenceTokens.size(); tokenIdx++) {
+						Pair<String, Double> taggedToken = taggedSentenceTokens.get(tokenIdx);
+						Pair<Integer, Annotation> tokenAnnPair = tokenIDsOfSentence.get(tokenIdx);
+						if(taggedToken != null && tokenAnnPair != null) {
+							Annotation tokenAnn = tokenAnnPair.second;
+
+							String taggedToken_Label = taggedToken.first != null ? taggedToken.first : "_UNDEFINED_";
+							String taggedToken_Probability = taggedToken.second != null ? taggedToken.second + "" : "_UNDEFINED_";
+
+							// Adding GATE token annotation label and probability features
+							// System.out.println("   > " + tokenIdx + " > " + taggedToken.getFirst() + " > " + taggedToken.getSecond() + " > GATE TOKEN: " + GATEutils.getAnnotationText(tokenAnn, this.document).orElse("NO TEXT"));
+
+							tokenAnn.setFeatures((tokenAnn.getFeatures() != null) ? tokenAnn.getFeatures() : Factory.newFeatureMap());
+							tokenAnn.getFeatures().put("CRFsuite_SFtype_label", taggedToken_Label);
+							tokenAnn.getFeatures().put("CRFsuite_SFtype_prob", taggedToken_Probability);
+
+							// DERIVED,GLOBAL,CONTEXTUAL,NONE,MULTIPLE,SHORT
+							if(currentType != null && taggedToken_Label.trim().endsWith(currentType)) {
+								// ANNO -> ANNO
+								if(startOffsetBegin_SFtype == -1) startOffsetBegin_SFtype = tokenAnn.getStartNode().getOffset();
+								startOffsetEnd_SFtype = tokenAnn.getEndNode().getOffset();
+							}
+							if(currentType != null && !taggedToken_Label.trim().endsWith(currentType)) {
+								// ANNO -> DIFFERENT_ANNO or NONE
+
+								// 1) Create annotation
+								if(startOffsetBegin_SFtype != -1 && startOffsetEnd_SFtype != -1) {
+									String abbrteviationTypeAnno = null;
+									
+									try {
+										FeatureMap fm = gate.Factory.newFeatureMap();
+										fm.put("CRFsuite_SFtype_label", taggedToken_Label);
+										fm.put("CRFsuite_SFtype_prob", taggedToken_Probability);
+										
+										abbrteviationTypeAnno = (abbrteviationTypeAnno == null && currentType.trim().equals("DERIVED")) ? derived_abbrvType : abbrteviationTypeAnno;
+										abbrteviationTypeAnno = (abbrteviationTypeAnno == null && currentType.trim().equals("GLOBAL")) ? global_abbrvType : abbrteviationTypeAnno;
+										abbrteviationTypeAnno = (abbrteviationTypeAnno == null && currentType.trim().equals("CONTEXTUAL")) ? contextual_abbrvType : abbrteviationTypeAnno;
+										abbrteviationTypeAnno = (abbrteviationTypeAnno == null && currentType.trim().equals("MULTIPLE")) ? multiple_abbrvType : abbrteviationTypeAnno;
+										abbrteviationTypeAnno = (abbrteviationTypeAnno == null && currentType.trim().equals("SHORT")) ? short_abbrvType : abbrteviationTypeAnno;
+										
+										abbrteviationTypeAnno = (abbrteviationTypeAnno == null) ? "-" : abbrteviationTypeAnno;
+										this.document.getAnnotations(mainAnnSet).add(startOffsetBegin_SFtype, startOffsetEnd_SFtype, abbrteviationTypeAnno, fm);
+									} catch (InvalidOffsetException e) {
+										logger.error("Error while creating annotation from " + startOffsetBegin_SFtype + ", to " + startOffsetEnd_SFtype + " type " + abbrteviationTypeAnno);
+										e.printStackTrace();
+									}
+								}
+
+								// 2) If not NONE, get new one
+								if(taggedToken_Label.trim().endsWith("NONE")) {
+									currentType = null;
+									startOffsetBegin_SFtype = -1l;
+									startOffsetEnd_SFtype = -1l;
+								}
+								else {
+									currentType = taggedToken_Label.trim().substring(taggedToken_Label.trim().lastIndexOf("=") + 1);
+									startOffsetBegin_SFtype = tokenAnn.getStartNode().getOffset();
+									startOffsetEnd_SFtype = tokenAnn.getEndNode().getOffset();
+								}
+							}
+							else if(currentType == null && !taggedToken_Label.trim().endsWith("NONE")) {
+								// NONE -> ANNO
+								currentType = taggedToken_Label.trim().substring(taggedToken_Label.trim().lastIndexOf("=") + 1);
+								startOffsetBegin_SFtype = tokenAnn.getStartNode().getOffset();
+								startOffsetEnd_SFtype = tokenAnn.getEndNode().getOffset();
+							}
+							else if(currentType == null && taggedToken_Label.trim().endsWith("NONE")) {
+								// NONE -> NONE
+								startOffsetBegin_SFtype = -1l;
+								startOffsetEnd_SFtype = -1l;
+							}
+							else if(startOffsetBegin_SFtype == -1 && startOffsetEnd_SFtype != -1) {
+								currentType = null;
+								startOffsetBegin_SFtype = -1l;
+								startOffsetEnd_SFtype = -1l;
+							}
+
+						}
+						else {
+							System.out.println("ERROR: Impossible to retrieve token label of token number " + tokenIdx + " of sentence number: " + sentenceIdx_SFtype
+									+ " (sentence ID: " + ((GATEsentenceID != null && GATEsentenceID.first != null) ? GATEsentenceID.first : "NULL") + ") - "
+									+ " (sentence text: " + GATEutils.getAnnotationText(GATEsentenceID.second, this.document).orElse("NO TEXT") + ") - "
+									+ " (sentence token num.: " + ((tokenIDsOfSentence != null) ? tokenIDsOfSentence.size() + "" : "NULL") + ") - "
+									+ " (tagged sequence token num.: " + ((taggedSentenceTokens != null) ? taggedSentenceTokens.size() + "" : "NULL") + ") - ");
+						}
+					}
+				}
+			}
+		}
 
 		// ***************************************************************
 		// ***************************************************************
@@ -490,15 +614,18 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 							}
 							else if(taggedToken_Label.trim().endsWith("O") && startOffsetBegin_LF != -1 && startOffsetEnd_LF != -1) {
 								// Create annotation
-								try {
-									FeatureMap fm = gate.Factory.newFeatureMap();
-									fm.put("CRFsuite_LF_label", taggedToken_Label);
-									fm.put("CRFsuite_LF_prob", taggedToken_Probability);
-									this.document.getAnnotations(mainAnnSet).add(startOffsetBegin_LF, startOffsetEnd_LF, longFormType, fm);
-								} catch (InvalidOffsetException e) {
-									logger.error("Error while creating annotation from " + startOffsetBegin_LF + ", to " + startOffsetEnd_LF + " type " + longFormType);
-									e.printStackTrace();
+								if(startOffsetBegin_LF != -1 && startOffsetEnd_LF != -1) {
+									try {
+										FeatureMap fm = gate.Factory.newFeatureMap();
+										fm.put("CRFsuite_LF_label", taggedToken_Label);
+										fm.put("CRFsuite_LF_prob", taggedToken_Probability);
+										this.document.getAnnotations(mainAnnSet).add(startOffsetBegin_LF, startOffsetEnd_LF, longFormType, fm);
+									} catch (InvalidOffsetException e) {
+										logger.error("Error while creating annotation from " + startOffsetBegin_LF + ", to " + startOffsetEnd_LF + " type " + longFormType);
+										e.printStackTrace();
+									}
 								}
+								
 								startOffsetBegin_LF = -1l;
 								startOffsetEnd_LF = -1l;
 							}
@@ -581,12 +708,12 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 		return new Pair<List<ItemSequence>, List<StringList>>(xseqs, yseqs);
 	}
 
-	
+
 	private static void initializeAndStoreWekaFilter() throws Exception {
-		
+
 		String bioABminerResourceFolder = PropertyManager.getProperty("resourceFolder.fullPath");
 		if(!bioABminerResourceFolder.endsWith(File.separator)) bioABminerResourceFolder += File.separator;
-		
+
 		// Instantiate feature generator classes
 		featSet = TokenFeatureGenerator.generateFeatureSet(PropertyManager.getProperty("NLP-utils.resourceFodler"));
 
@@ -610,7 +737,7 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 				logger.error("\nError loading ARFF file: " + arffToInitFilter + " ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-			
+
 			// Apply filter to init it
 			try {
 				multiFilter.setInputFormat(ARFFinstancesToInitFilter);
@@ -620,7 +747,7 @@ public class BioABabbrvSpotter extends AbstractLanguageAnalyser implements Proce
 				logger.error("\nError loading ARFF filter ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-			
+
 			// Store filter
 			ObjectOutputStream oos = null;
 			FileOutputStream fout = null;

@@ -62,7 +62,8 @@ public class WikiFreqOfContext implements FeatCalculator<Double, Document, Token
 					String lemmaFeature = GATEutils.getStringFeature(tokenAnnToConsider, TokenAnnConst.tokenLemmaFeat).orElse(null);
 					try {
 						Integer lemmaFrequency = WikipediaLemmaTermFrequency.getLemmaOccurrencesCount(this.language, lemmaFeature);
-						retValue.setValue(lemmaFrequency.doubleValue());
+						Double lemmaFrequencyScaled = (double) (lemmaFrequency + 1 - WikipediaLemmaTermFrequency.getMinLemmaOccurrencesCount(this.language)) / (double) (WikipediaLemmaTermFrequency.getMaxLemmaOccurrencesCount(this.language) + 1 - WikipediaLemmaTermFrequency.getMinLemmaOccurrencesCount(this.language));
+						retValue.setValue(10d * lemmaFrequencyScaled);
 					} catch (Exception e) {
 						logger.warn("Error while computing lemma frequency.");
 					}
