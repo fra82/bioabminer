@@ -1,6 +1,7 @@
 package es.imim.ibi.bioab.exec;
 
 import java.io.File;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.backingdata.gateutils.GATEinit;
@@ -9,7 +10,9 @@ import org.backingdata.nlp.utils.Manage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import es.imim.ibi.bioab.exec.resource.BioABabbrvLFspotter;
 import es.imim.ibi.bioab.exec.resource.BioABabbrvSpotter;
+import es.imim.ibi.bioab.exec.resource.BioABabbrvTypeClassifier;
 import es.imim.ibi.bioab.nlp.freeling.FreelingParser;
 import es.imim.ibi.bioab.nlp.mate.MateParser;
 import gate.Document;
@@ -37,8 +40,12 @@ public class BioABminer {
 	private static FreelingParser FreelingParser_Resource = null;
 	private static MateParser MateParser_Resource = null;
 	private static BioABabbrvSpotter BioABabbrvSpotter_Resource = null;
-	
-	private static boolean isInitialized = false;
+	private static BioABabbrvTypeClassifier BioABabbrvTypeClassifier_Resource = null;
+	private static BioABabbrvLFspotter BioABabbrvLFspotter_Resource = null;
+
+	private static boolean isInitializedALL = false;
+	private static boolean isInitializedNLP = false;
+	private static boolean isInitializedABBRV = false;
 	
 	/**
 	 * Initialize BioAB miner
@@ -46,9 +53,9 @@ public class BioABminer {
 	 * @param bioABminerPropertyFilePath full local path to the BioAB miner property file
 	 * 
 	 */
-	public static void init(String bioABminerPropertyFilePath) {
+	public static void initAll(String bioABminerPropertyFilePath) {
 
-		if(!isInitialized) {
+		if(!isInitializedALL) {
 
 			// Set the full path of the configuration file of BioAB Miner
 			PropertyManager.setPropertyFilePath(bioABminerPropertyFilePath);
@@ -62,9 +69,49 @@ public class BioABminer {
 				e.printStackTrace();
 			}
 
-			// Init NLP-utils library by passing the folder
+			// Init NLP-utils library by passing the BioAB miner resource folder
+			// Resource folder can be downloaded at: http://backingdata.org/bioab/BioAB-resources-1.0.tar.gz
 			try {
-				Manage.setResourceFolder(PropertyManager.getProperty("NLP-utils.resourceFodler"));
+				Manage.setResourceFolder(PropertyManager.getProperty("resourceFolder.fullPath"));
+			}
+			catch (Exception e) {
+				logger.error("\nError initializing NLP-utils library ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+			
+			initNLP(bioABminerPropertyFilePath);
+			initABBRV(bioABminerPropertyFilePath);
+			
+			isInitializedALL = true;
+		}
+
+	}
+	
+	/**
+	 * Initialize NLP Modules: GATE, Freeling and MATE
+	 * 
+	 * @param bioABminerPropertyFilePath
+	 */
+	public static void initNLP(String bioABminerPropertyFilePath) {
+
+		if(!isInitializedNLP) {
+
+			// Set the full path of the configuration file of BioAB Miner
+			PropertyManager.setPropertyFilePath(bioABminerPropertyFilePath);
+
+			// Initialize GATE
+			try {
+				GATEinit.initGate(PropertyManager.getProperty("gate.home"), PropertyManager.getProperty("gate.plugins"));
+			}
+			catch (Exception e) {
+				logger.error("\nError initializing GATE ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			// Init NLP-utils library by passing the BioAB miner resource folder
+			// Resource folder can be downloaded at: http://backingdata.org/bioab/BioAB-resources-1.0.tar.gz
+			try {
+				Manage.setResourceFolder(PropertyManager.getProperty("resourceFolder.fullPath"));
 			}
 			catch (Exception e) {
 				logger.error("\nError initializing NLP-utils library ---> " + e.getMessage());
@@ -100,9 +147,8 @@ public class BioABminer {
 				MateParserfm.put("excludeThreshold", 120);
 
 				// Set the path of the MATE models for Spanish available in the NLP-utils resource folder
-				// Resource folder can be downloaded at: http://backingdata.org/nlputils/NLPutils-resources-1.0.tar.gz 
-				// To access information / description of the NLP-utils library: http://nlp-utils.readthedocs.io/en/latest/)
-				String NLPutilsResourceFolder = PropertyManager.getProperty("NLP-utils.resourceFodler");
+				// Resource folder can be downloaded at: http://backingdata.org/bioab/BioAB-resources-1.0.tar.gz
+				String NLPutilsResourceFolder = PropertyManager.getProperty("resourceFolder.fullPath");
 				NLPutilsResourceFolder = (NLPutilsResourceFolder.endsWith(File.separator)) ? NLPutilsResourceFolder : NLPutilsResourceFolder + File.separator;
 				String baseModelPath = NLPutilsResourceFolder + "mate_models" + File.separator;
 				MateParserfm.put("lemmaModelPath", baseModelPath + "CoNLL2009-ST-Spanish-ALL.anna-3.3.lemmatizer.model");
@@ -137,11 +183,155 @@ public class BioABminer {
 				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-			
-			isInitialized = true;
+
+			// Instantiate BioAB Type Classifier
+			try {
+				Gate.getCreoleRegister().registerComponent(BioABabbrvTypeClassifier.class);
+
+				FeatureMap BioABtypeClassifierFm = Factory.newFeatureMap();
+				BioABtypeClassifierFm.put("tokenAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABtypeClassifierFm.put("tokenType", FreelingParser.tokenType);
+				BioABtypeClassifierFm.put("tokenLemmaFeat", FreelingParser.tokenType_lemmaFeatName);
+				BioABtypeClassifierFm.put("tokenPOSFeat", FreelingParser.tokenType_POSFeatName);
+				BioABtypeClassifierFm.put("tokenDepFunctFeat", MateParser.depKindFeat);
+				BioABtypeClassifierFm.put("sentenceAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABtypeClassifierFm.put("sentenceType", FreelingParser.sentenceType);
+
+				BioABabbrvTypeClassifier_Resource = (BioABabbrvTypeClassifier) gate.Factory.createResource(BioABabbrvTypeClassifier.class.getName(), BioABtypeClassifierFm);
+			}
+			catch (Exception e) {
+				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			// Instantiate BioAB LF Spotter
+			try {
+				Gate.getCreoleRegister().registerComponent(BioABabbrvLFspotter.class);
+
+				FeatureMap BioABLFspotterFm = Factory.newFeatureMap();
+				BioABLFspotterFm.put("tokenAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABLFspotterFm.put("tokenType", FreelingParser.tokenType);
+				BioABLFspotterFm.put("tokenLemmaFeat", FreelingParser.tokenType_lemmaFeatName);
+				BioABLFspotterFm.put("tokenPOSFeat", FreelingParser.tokenType_POSFeatName);
+				BioABLFspotterFm.put("tokenDepFunctFeat", MateParser.depKindFeat);
+				BioABLFspotterFm.put("sentenceAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABLFspotterFm.put("sentenceType", FreelingParser.sentenceType);
+				BioABLFspotterFm.put("chunkAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABLFspotterFm.put("chunkType", FreelingParser.chunkType);
+				BioABLFspotterFm.put("chunkLabelFeat", FreelingParser.chunkType_labelFeatName);
+				
+				BioABabbrvLFspotter_Resource = (BioABabbrvLFspotter) gate.Factory.createResource(BioABabbrvLFspotter.class.getName(), BioABLFspotterFm);
+			}
+			catch (Exception e) {
+				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			isInitializedNLP = true;
 		}
 
 	}
+	
+	/**
+	 * Initialize abbreviation extraction modules: BioAB Abbreviation Spotter, BioAB Abbreviation Type Classifier and BioAB Abbreviation Long Form Spotter
+	 * 
+	 * @param bioABminerPropertyFilePath
+	 */
+	public static void initABBRV(String bioABminerPropertyFilePath) {
+
+		if(!isInitializedABBRV) {
+
+			// Set the full path of the configuration file of BioAB Miner
+			PropertyManager.setPropertyFilePath(bioABminerPropertyFilePath);
+
+			// Initialize GATE
+			try {
+				GATEinit.initGate(PropertyManager.getProperty("gate.home"), PropertyManager.getProperty("gate.plugins"));
+			}
+			catch (Exception e) {
+				logger.error("\nError initializing GATE ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			// Init NLP-utils library by passing the BioAB miner resource folder
+			// Resource folder can be downloaded at: http://backingdata.org/bioab/BioAB-resources-1.0.tar.gz
+			try {
+				Manage.setResourceFolder(PropertyManager.getProperty("resourceFolder.fullPath"));
+			}
+			catch (Exception e) {
+				logger.error("\nError initializing NLP-utils library ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+			
+			// Instantiate BioAB spotter
+			try {
+				Gate.getCreoleRegister().registerComponent(BioABabbrvSpotter.class);
+
+				FeatureMap BioABspotterFm = Factory.newFeatureMap();
+				BioABspotterFm.put("tokenAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABspotterFm.put("tokenType", FreelingParser.tokenType);
+				BioABspotterFm.put("tokenLemmaFeat", FreelingParser.tokenType_lemmaFeatName);
+				BioABspotterFm.put("tokenPOSFeat", FreelingParser.tokenType_POSFeatName);
+				BioABspotterFm.put("tokenDepFunctFeat", MateParser.depKindFeat);
+				BioABspotterFm.put("sentenceAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABspotterFm.put("sentenceType", FreelingParser.sentenceType);
+
+				BioABabbrvSpotter_Resource = (BioABabbrvSpotter) gate.Factory.createResource(BioABabbrvSpotter.class.getName(), BioABspotterFm);
+			}
+			catch (Exception e) {
+				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			// Instantiate BioAB Type Classifier
+			
+			try {
+				Gate.getCreoleRegister().registerComponent(BioABabbrvTypeClassifier.class);
+
+				FeatureMap BioABtypeClassifierFm = Factory.newFeatureMap();
+				BioABtypeClassifierFm.put("tokenAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABtypeClassifierFm.put("tokenType", FreelingParser.tokenType);
+				BioABtypeClassifierFm.put("tokenLemmaFeat", FreelingParser.tokenType_lemmaFeatName);
+				BioABtypeClassifierFm.put("tokenPOSFeat", FreelingParser.tokenType_POSFeatName);
+				BioABtypeClassifierFm.put("tokenDepFunctFeat", MateParser.depKindFeat);
+				BioABtypeClassifierFm.put("sentenceAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABtypeClassifierFm.put("sentenceType", FreelingParser.sentenceType);
+
+				BioABabbrvTypeClassifier_Resource = (BioABabbrvTypeClassifier) gate.Factory.createResource(BioABabbrvTypeClassifier.class.getName(), BioABtypeClassifierFm);
+			}
+			catch (Exception e) {
+				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			// Instantiate BioAB LF Spotter
+			try {
+				Gate.getCreoleRegister().registerComponent(BioABabbrvLFspotter.class);
+
+				FeatureMap BioABLFspotterFm = Factory.newFeatureMap();
+				BioABLFspotterFm.put("tokenAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABLFspotterFm.put("tokenType", FreelingParser.tokenType);
+				BioABLFspotterFm.put("tokenLemmaFeat", FreelingParser.tokenType_lemmaFeatName);
+				BioABLFspotterFm.put("tokenPOSFeat", FreelingParser.tokenType_POSFeatName);
+				BioABLFspotterFm.put("tokenDepFunctFeat", MateParser.depKindFeat);
+				BioABLFspotterFm.put("sentenceAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABLFspotterFm.put("sentenceType", FreelingParser.sentenceType);
+				BioABLFspotterFm.put("chunkAnnSet", FreelingParser.mainAnnSet + "_SPA");
+				BioABLFspotterFm.put("chunkType", FreelingParser.chunkType);
+				BioABLFspotterFm.put("chunkLabelFeat", FreelingParser.chunkType_labelFeatName);
+				
+				BioABabbrvLFspotter_Resource = (BioABabbrvLFspotter) gate.Factory.createResource(BioABabbrvLFspotter.class.getName(), BioABLFspotterFm);
+			}
+			catch (Exception e) {
+				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+
+			isInitializedABBRV = true;
+		}
+
+	}
+	
 
 
 	/**
@@ -159,14 +349,14 @@ public class BioABminer {
 				gateDoc = gate.Factory.newDocument(docText);
 				return gateDoc;
 			} catch (ResourceInstantiationException e) {
-				logger.error("\nError loading GATE document from text ---> " + e.getMessage());
+				logger.error("\nError loading GATE document from text - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
 		}
 
 		return null;
 	}
-	
+
 	/**
 	 * Load a GATE Document from a GATE XML file
 	 * 
@@ -182,16 +372,16 @@ public class BioABminer {
 				gateDoc = gate.Factory.newDocument(new File(filePath).toURI().toURL());
 				return gateDoc;
 			} catch (Exception e) {
-				logger.error("\nError loading GATE document from text ---> " + e.getMessage());
+				logger.error("\nError loading GATE document from text - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
 		}
 
 		return null;
 	}
-	
-	
-	
+
+
+
 	/**
 	 * Load a GATE Document from the PDF file of a scientific publication
 	 * (GROBID - https://github.com/kermitt2/grobid - is exploited to extract structured text from the PDF)
@@ -211,7 +401,7 @@ public class BioABminer {
 	 * 
 	 * @return
 	 */
-	public static Document NLPtoolToDocument(Document gateDocToParse) {
+	public static Document extractNLPfeatures(Document gateDocToParse) {
 
 		if(gateDocToParse != null) {
 			try {
@@ -219,7 +409,7 @@ public class BioABminer {
 				FreelingParser_Resource.execute();
 				FreelingParser_Resource.setDocument(null);
 			} catch (Exception e) {
-				logger.error("\nError parsing GATE document by Freeling ---> " + e.getMessage());
+				logger.error("\nError parsing GATE document by Freeling - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
 
@@ -229,7 +419,7 @@ public class BioABminer {
 				MateParser_Resource.execute();
 				MateParser_Resource.setDocument(null);
 			} catch (Exception e) {
-				logger.error("\nError parsing GATE document by MATE ---> " + e.getMessage());
+				logger.error("\nError parsing GATE document by MATE - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
 
@@ -255,15 +445,40 @@ public class BioABminer {
 				BioABabbrvSpotter_Resource.execute();
 				BioABabbrvSpotter_Resource.setDocument(null);
 			} catch (Exception e) {
-				logger.error("\nError parsing GATE document by BioAB Abbreviation Spotter ---> " + e.getMessage());
+				logger.error("\nError parsing GATE document by BioAB Abbreviation Spotter - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-
+			
+			try {
+				BioABabbrvTypeClassifier_Resource.setDocument(gateDocToParse);
+				BioABabbrvTypeClassifier_Resource.execute();
+				BioABabbrvTypeClassifier_Resource.setDocument(null);
+			} catch (Exception e) {
+				logger.error("\nError parsing GATE document by BioAB Type Classifier - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+			
+			Set<String> abbrevTypes = gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).getAllTypes();
+			for(String abbrevType : abbrevTypes) {
+				System.out.println("    ABBREV : " + abbrevType + " > " + gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).get(abbrevType).size());
+			}
+			
+			try {
+				BioABabbrvLFspotter_Resource.setDocument(gateDocToParse);
+				BioABabbrvLFspotter_Resource.execute();
+				BioABabbrvLFspotter_Resource.setDocument(null);
+			} catch (Exception e) {
+				logger.error("\nError parsing GATE document by BioAB Long Form Spotter - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
+				e.printStackTrace();
+			}
+			
 			return gateDocToParse;
 		}
 
 		return null;
 	}
 	
+	
+
 
 }

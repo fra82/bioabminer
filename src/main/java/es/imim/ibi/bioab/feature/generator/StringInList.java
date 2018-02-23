@@ -45,7 +45,6 @@ public class StringInList implements FeatCalculator<Double, Document, TokenFeatu
 		this.sentenceScoped = sentScoped;
 
 		// Load list
-		// Read list
 		StringInList instanceCr = new StringInList();
 		BufferedReader br = null;
 		try {

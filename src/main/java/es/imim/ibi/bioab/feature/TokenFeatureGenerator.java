@@ -84,11 +84,6 @@ public class TokenFeatureGenerator {
 	// If token features are sentence scoped (the context of a token is described by considering only the info from the sentence where the token occurs)
 	private static boolean isSentenceScopedFeature = true;
 
-	// Full local path of the NLP-utils resource folder
-	// Resource folder can be downloaded at: http://backingdata.org/nlputils/NLPutils-resources-1.0.tar.gz 
-	// To access information / description of the NLP-utils library: http://nlp-utils.readthedocs.io/en/latest/)
-	private static String NLPutilResFolder = "/home/ronzano/Downloads/NLPutils-resources-1.0";
-
 	// Other variables
 	private static Set<String> OBIclassValues = new HashSet<String>();
 	private static Set<String> ABBTYPEclassValues = new HashSet<String>();
@@ -111,9 +106,10 @@ public class TokenFeatureGenerator {
 		// Set the full path of the configuration file of BioAB Miner
 		PropertyManager.setPropertyFilePath("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
 		
-		// Init NLP-utils library by passing the folder
+		// Init NLP-utils library by passing the BioAB miner resource folder
+		// Resource folder can be downloaded at: http://backingdata.org/bioab/BioAB-resources-1.0.tar.gz
 		try {
-			Manage.setResourceFolder(PropertyManager.getProperty("NLP-utils.resourceFodler"));
+			Manage.setResourceFolder(PropertyManager.getProperty("resourceFolder.fullPath"));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -126,7 +122,7 @@ public class TokenFeatureGenerator {
 		}
 
 		// Execution settings
-		inputFolder = "/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments";
+		inputFolder = "/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR";
 		outputFolder = "/home/ronzano/Desktop/Hackathon_PLN/ARFF_FILES";
 		version = "BARR17_train_and_test";
 		isSentenceScopedFeature = true;
@@ -147,8 +143,14 @@ public class TokenFeatureGenerator {
 		System.out.println("Is the context of a token described by considering only the info from the sentence where the token occurs? " + isSentenceScopedFeature);
 		System.out.println("**************************************************");
 
-		// Generate feature set
-		FeatureSet<Document, TokenFeatureGenerationContext> featSet = generateFeatureSet(NLPutilResFolder);
+		// Init NLP-utils library by passing the BioAB miner resource folder
+		// Resource folder can be downloaded at: http://backingdata.org/bioab/BioAB-resources-1.0.tar.gz
+		FeatureSet<Document, TokenFeatureGenerationContext> featSet = null;
+		try {
+			featSet = generateFeatureSet(PropertyManager.getProperty("resourceFolder.fullPath"));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		// Stats
 		int gateDocCount = 0;
@@ -278,21 +280,8 @@ public class TokenFeatureGenerator {
 		try {
 			// Instantiate filters
 			MultiFilter multiFilter = new MultiFilter();
-
-			Filter[] filtersArray = new Filter[3];
-			Remove removeFilter = new Remove();
-			removeFilter.setOptions(weka.core.Utils.splitOptions("-R 1,2,10-23,94-100,108"));
-			filtersArray[0] = removeFilter;
-
-			StringToNominal StringToNominalFilter1 = new StringToNominal();
-			StringToNominalFilter1.setOptions(weka.core.Utils.splitOptions("-R 1-7"));
-			filtersArray[1] = StringToNominalFilter1;
-
-			StringToNominal StringToNominalFilter2 = new StringToNominal();
-			StringToNominalFilter2.setOptions(weka.core.Utils.splitOptions("-R 57-63"));
-			filtersArray[2] = StringToNominalFilter2;
-
-			multiFilter.setFilters(filtersArray);
+			
+			multiFilter.setFilters(getFilterArrayForARFF());
 
 			// Load ARFF
 			Instances ARFFinstances = null;
@@ -326,6 +315,24 @@ public class TokenFeatureGenerator {
 		System.gc();
 
 		logger.info("END PROCESSING - generated ARFF file including " + tokenCount + " tokens.");
+	}
+	
+	public static Filter[] getFilterArrayForARFF() throws Exception {
+		
+		Filter[] filtersArray = new Filter[3];
+		Remove removeFilter = new Remove();
+		removeFilter.setOptions(weka.core.Utils.splitOptions("-R 1,2,10-23,94-100"));
+		filtersArray[0] = removeFilter;
+
+		StringToNominal StringToNominalFilter1 = new StringToNominal();
+		StringToNominalFilter1.setOptions(weka.core.Utils.splitOptions("-R 1-7"));
+		filtersArray[1] = StringToNominalFilter1;
+
+		StringToNominal StringToNominalFilter2 = new StringToNominal();
+		StringToNominalFilter2.setOptions(weka.core.Utils.splitOptions("-R 57-63"));
+		filtersArray[2] = StringToNominalFilter2;
+		
+		return filtersArray;
 	}
 
 	/**
