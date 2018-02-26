@@ -1,10 +1,13 @@
+/**
+ * Biomedical Abbreviation Miner (BioAB Miner)
+ * 
+ */
 package es.imim.ibi.bioab.server.template;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;

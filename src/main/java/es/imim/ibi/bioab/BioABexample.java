@@ -1,8 +1,17 @@
+/**
+ * Biomedical Abbreviation Miner (BioAB Miner)
+ * 
+ */
 package es.imim.ibi.bioab;
 
+import java.util.List;
+
 import org.backingdata.gateutils.GATEfiles;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import es.imim.ibi.bioab.exec.BioABminer;
+import es.imim.ibi.bioab.exec.model.Abbreviation;
 import gate.Document;
 
 /**
@@ -13,122 +22,58 @@ import gate.Document;
  *
  */
 public class BioABexample {
-
-
+	
+	private static Logger logger = LoggerFactory.getLogger(BioABexample.class);
+	
 	public static void main(String[] args) {
-
-
+				
 		// Initialize BioAB Miner by specifying the full path of the property file
-		BioABminer.initNLP("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
+		BioABminer.initALL("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
 		
 		
-		// PDF TEST		
-		Document doc = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/10.1.1.107.4029.pdf");
-		BioABminer.extractNLPfeatures(doc);
-		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/10.1.1.107.4029.xml");
 		
-		doc = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5414-4759-1-PB.pdf");
-		BioABminer.extractNLPfeatures(doc);
-		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5414-4759-1-PB.xml");
+		// ***************************************************************************************
+		// Extract abbreviation from a PDF document of a scientific publication by means of GROBID
+		Document docPDF = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/INPUT_PDF_PUBLICATION.pdf");
+		BioABminer.extractNLPfeatures(docPDF);
+		BioABminer.extractAbbreviations(docPDF);
+		// Document stored as GATE XML with abbreviation annotations in the annotation set "BioABresult"
+		GATEfiles.storeGateXMLToFile(docPDF, "/home/ronzano/Desktop/Hackathon_PLN/PARSED_PDF_PUBLICATION_GATE_DOCUMENT.xml");
 		
-		doc = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5420-4765-1-PB.pdf");
-		BioABminer.extractNLPfeatures(doc);
-		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5420-4765-1-PB.xml");
-		
-		System.out.println("Execution terminated");
-		
-		System.exit(1);
-		
-		
-		/*
-		// Parse GATE XML documents and store abbreviations as GATE text annotations
-		String inputGATEdoc = "/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR/DOC_128_BARR_ibereval_training_full_MANanno_1v_PROC.xml";
-		Document docToParse = BioABminer.getDocumentFormGATEXMLfile(inputGATEdoc);
-		long startTime = System.currentTimeMillis();
-		// BioABminer.NLPtoolToDocument(docToParse);
-		BioABminer.extractAbbreviations(docToParse);
-		System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + inputGATEdoc);
-		GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/BioABdocument1.xml");
-
-		inputGATEdoc = "/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR/DOC_2001_BARR_ibereval_training_full_MANanno_1v_PROC.xml";
-		docToParse = BioABminer.getDocumentFormGATEXMLfile(inputGATEdoc);
-		startTime = System.currentTimeMillis();
-		// BioABminer.NLPtoolToDocument(docToParse);
-		BioABminer.extractAbbreviations(docToParse);
-		System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + inputGATEdoc);
-		GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/BioABdocument3.xml");
-
-		inputGATEdoc = "/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR/DOC_1946_BARR_ibereval_training_full_MANanno_1v_PROC.xml";
-		docToParse = BioABminer.getDocumentFormGATEXMLfile(inputGATEdoc);
-		startTime = System.currentTimeMillis();
-		// BioABminer.NLPtoolToDocument(docToParse);
-		BioABminer.extractAbbreviations(docToParse);
-		System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + inputGATEdoc);
-		GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/BioABdocument2.xml");
-		*/
-		
-		
-		/*
-		File[] BARRfiles = (new File("/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR")).listFiles();
-		
-		int fileCounter = 0;
-		for(File BARRfile : BARRfiles) {
-			if(BARRfile != null && BARRfile.exists() && BARRfile.isFile() && BARRfile.getName().endsWith(".xml")) {
-				try {
-					
-					// if(++fileCounter > 100) {
-					//	break;
-					// }
-					
-					System.out.println("\n-------------------------------------------------");
-					System.out.println(" > Start processing document: " + BARRfile.getName() + "...");
-					Document docToParse = BioABminer.getDocumentFormGATEXMLfile(BARRfile.getAbsolutePath());
-					docToParse.setName(BARRfile.getName());
-					long startTime = System.currentTimeMillis();
-					Set<String> goldStandardTypes = docToParse.getAnnotations("GoldStandard").getAllTypes();
-					for(String goldStandardType : goldStandardTypes) {
-						System.out.println("    GS : " + goldStandardType + " > " + docToParse.getAnnotations("GoldStandard").get(goldStandardType).size());
-					}
-					BioABminer.extractAbbreviations(docToParse);
-					System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + BARRfile.getName());
-					// GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/" + BARRfile.getName().replace(".xml", "_TEST.xml"));
-					// System.out.println(" > Doc stored to " + "/home/ronzano/Downloads/" + BARRfile.getName().replace(".xml", "_TEST.xml"));
-					
-					docToParse.cleanup();
-					System.gc();
-					
-					System.out.println(" > STAT > longFormBySpan >" + BioABabbrvLFspotter.longFormBySpan);
-					System.out.println(" > STAT > candidateMatchASingleSpanLongForm >" + BioABabbrvLFspotter.candidateMatchASingleSpanLongForm);
-					System.out.println(" > STAT > candidateMatchAMultipleSpanLongForm >" + BioABabbrvLFspotter.candidateMatchAMultipleSpanLongForm);
-					System.out.println(" > STAT > candidateMatchAMultipleSpanLongForm >" + BioABabbrvLFspotter.candidateMatchAMultipleSpanLongForm);
-					System.out.println(" > STAT > longFormWithoutAnyCandidateSpanMatch >" + BioABabbrvLFspotter.longFormWithoutAnyCandidateSpanMatch);
-					System.out.println(" > STAT > longFormMatchByTypeSingle >" + BioABabbrvLFspotter.longFormMatchByTypeSingle);
-					System.out.println(" > STAT > longFormMatchByTypeMulti >" + BioABabbrvLFspotter.longFormMatchByTypeMulti);
-					
-				}
-				catch(Exception e) {
-					System.out.println(" > Exception parsing doc: " + BARRfile.getAbsolutePath());
-					e.printStackTrace();
-				} 
-			}
+		List<Abbreviation> PDFabbrvList = BioABminer.getAbbreviationList(docPDF);
+		for(Abbreviation abbrv : PDFabbrvList) {
+			System.out.println(" PDF ABBREVIATION: " + abbrv.toString());
 		}
 		
-		System.out.println("\n\n\n");
-
-		for(String longFormWithoutAnyCandidateSpanMatch : BioABabbrvLFspotter.longFormWithoutAnyCandidateSpanMatchList) {
-			System.out.println(" > STAT > LongFormNotMatch >" + longFormWithoutAnyCandidateSpanMatch);
+		
+		// **************************************
+		// Extract abbreviation from a plain text
+		Document docTXT = BioABminer.getDocumentFormText("Desde el punto de vista inmunológico, queda por solventar la prevención de las lesiones "
+				+ "crónicas del injerto (fibrosis intersticial y atrofia tubular [FI y AT]) y la aparición del rechazo mediado por anticuerpos.");
+		BioABminer.extractNLPfeatures(docTXT);
+		BioABminer.extractAbbreviations(docTXT);
+		// Document stored as GATE XML with abbreviation annotations in the annotation set "BioABresult"
+		GATEfiles.storeGateXMLToFile(docTXT, "/home/ronzano/Desktop/Hackathon_PLN/TEXT_GATE_DOCUMENT.xml");
+		
+		List<Abbreviation> TXTabbrvList = BioABminer.getAbbreviationList(docTXT);
+		for(Abbreviation abbrv : TXTabbrvList) {
+			System.out.println(" TXT ABBREVIATION: " + abbrv.toString());
 		}
 		
-		System.out.println("\n\n\n");
 		
-		System.out.println(" > STAT > longFormBySpan >" + BioABabbrvLFspotter.longFormBySpan);
-		System.out.println(" > STAT > candidateMatchASingleSpanLongForm >" + BioABabbrvLFspotter.candidateMatchASingleSpanLongForm);
-		System.out.println(" > STAT > candidateMatchAMultipleSpanLongForm >" + BioABabbrvLFspotter.candidateMatchAMultipleSpanLongForm);
-		System.out.println(" > STAT > candidateMatchAMultipleSpanLongForm >" + BioABabbrvLFspotter.candidateMatchAMultipleSpanLongForm);
-		System.out.println(" > STAT > longFormWithoutAnyCandidateSpanMatch >" + BioABabbrvLFspotter.longFormWithoutAnyCandidateSpanMatch);
-		System.out.println(" > STAT > longFormMatchByTypeSingle >" + BioABabbrvLFspotter.longFormMatchByTypeSingle);
-		System.out.println(" > STAT > longFormMatchByTypeMulti >" + BioABabbrvLFspotter.longFormMatchByTypeMulti);
-		*/
+		// **************************************************************
+		// Extract abbreviation from a document stored as a GATE XML file
+		Document docGATEXML = BioABminer.getDocumentFormGATEXMLfile("/home/ronzano/Desktop/Hackathon_PLN/INPUT_GATE_XML_DOCUMENT.xml");
+		
+		BioABminer.extractNLPfeatures(docGATEXML);
+		BioABminer.extractAbbreviations(docGATEXML);
+		// Document stored as GATE XML with abbreviation annotations in the annotation set "BioABresult"
+		GATEfiles.storeGateXMLToFile(docGATEXML, "/home/ronzano/Desktop/Hackathon_PLN/PARSED_INPUT_GATE_XML_DOCUMENT.xml");
+		
+		List<Abbreviation> GATEXMLabbrvList = BioABminer.getAbbreviationList(docGATEXML);
+		for(Abbreviation abbrv : GATEXMLabbrvList) {
+			System.out.println(" GATE XML ABBREVIATION: " + abbrv.toString());
+		}
 	}
 
 }

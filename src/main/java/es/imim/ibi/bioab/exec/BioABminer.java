@@ -1,21 +1,30 @@
+/**
+ * Biomedical Abbreviation Miner (BioAB Miner)
+ * 
+ */
 package es.imim.ibi.bioab.exec;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.backingdata.gateutils.GATEinit;
+import org.backingdata.gateutils.GATEutils;
 import org.backingdata.gateutils.generic.PropertyManager;
 import org.backingdata.nlp.utils.Manage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import es.imim.ibi.bioab.exec.model.Abbreviation;
 import es.imim.ibi.bioab.exec.pdf.GROBIDloader;
 import es.imim.ibi.bioab.exec.resource.BioABabbrvLFspotter;
 import es.imim.ibi.bioab.exec.resource.BioABabbrvSpotter;
 import es.imim.ibi.bioab.exec.resource.BioABabbrvTypeClassifier;
 import es.imim.ibi.bioab.nlp.freeling.FreelingParser;
 import es.imim.ibi.bioab.nlp.mate.MateParser;
+import gate.Annotation;
 import gate.AnnotationSet;
 import gate.Document;
 import gate.Factory;
@@ -447,8 +456,7 @@ public class BioABminer {
 				logger.error("\nError parsing GATE document by BioAB Abbreviation Spotter - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-
-			/* DISABLED
+			
 			try {
 				synchronized(BioABabbrvTypeClassifierSynch) {
 					BioABabbrvTypeClassifier_Resource.setDocument(gateDocToParse);
@@ -459,11 +467,10 @@ public class BioABminer {
 				logger.error("\nError parsing GATE document by BioAB Type Classifier - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-			 */
 
 			Set<String> abbrevTypes = gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).getAllTypes();
 			for(String abbrevType : abbrevTypes) {
-				System.out.println("    ABBREV : " + abbrevType + " > " + gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).get(abbrevType).size());
+				System.out.println("    SPOTTED ABBREV : " + abbrevType + " > " + gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).get(abbrevType).size());
 			}
 
 			try {
@@ -483,7 +490,113 @@ public class BioABminer {
 		return null;
 	}
 
+	/**
+	 * Retrieve a list of abbreviation extracted from the document
+	 * 
+	 * @param parsedDoc
+	 * @return
+	 */
+	public static List<Abbreviation> getAbbreviationList(Document parsedDoc) {
+		List<Abbreviation> retList = new ArrayList<Abbreviation>();
+		
+			
+		try {
+			List<Annotation> LFSFlist = GATEutils.getAnnInDocOrder(parsedDoc, BioABabbrvLFspotter.finalAnnoSet, BioABabbrvLFspotter.shortLongFormType);
+			for(Annotation LFSFanno : LFSFlist) {
+				if(LFSFanno != null) {
+					try {
+						Annotation longForm = null;
+						Annotation shortForm = null;
+						
+						List<Annotation> SFlist = GATEutils.getAnnInDocOrderContainedAnn(parsedDoc, BioABabbrvLFspotter.finalAnnoSet, BioABabbrvLFspotter.shortFormType, LFSFanno);
+						List<Annotation> LFlist = GATEutils.getAnnInDocOrderContainedAnn(parsedDoc, BioABabbrvLFspotter.finalAnnoSet, BioABabbrvLFspotter.longFormType, LFSFanno);
+						
+						for(Annotation sf : SFlist) {
+							if(sf != null && GATEutils.getStringFeature(sf, "relationID").orElse("-").equals(GATEutils.getStringFeature(LFSFanno, "relationID").orElse("--"))) {
+								shortForm = sf;
+								break;
+							}
+						}
+						
+						for(Annotation lf : LFlist) {
+							if(lf != null && GATEutils.getStringFeature(lf, "relationID").orElse("-").equals(GATEutils.getStringFeature(LFSFanno, "relationID").orElse("--"))) {
+								longForm = lf;
+								break;
+							}
+						}
+						
+						Abbreviation abbrvOut = new Abbreviation();
+						abbrvOut.setLongForm(GATEutils.getAnnotationText(longForm, parsedDoc).orElse("NONE"));
+						abbrvOut.setAbbreviation(GATEutils.getAnnotationText(shortForm, parsedDoc).orElse("NONE"));
+						
+						List<Annotation> sentenceList = GATEutils.getAnnInDocOrderIntersectAnn(parsedDoc, FreelingParser.mainAnnSet + "_SPA", FreelingParser.sentenceType, LFSFanno);
+						if(sentenceList != null && sentenceList.size() > 0 && sentenceList.get(0) != null) {
+							abbrvOut.setSentence(GATEutils.getAnnotationText(sentenceList.get(0), parsedDoc).orElse("NONE"));
+						}
+						
+						abbrvOut.setType("SF-LF");
+						
+						retList.add(abbrvOut);
+						
+					}
+					catch(Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
+			List<String> abbrvTypes = new ArrayList<String>();
+			abbrvTypes.add("CONTEXTUAL");
+			abbrvTypes.add("DERIVED");
+			abbrvTypes.add("MULTIPLE");
+			abbrvTypes.add("GLOBAL");
+			
+			for(String abbrvType : abbrvTypes) {
+				try {
+					
+					List<Annotation> abbrvList = GATEutils.getAnnInDocOrder(parsedDoc, BioABabbrvLFspotter.finalAnnoSet ,abbrvType);
+					if(abbrvList != null && abbrvList.size() > 0) {
+						for(Annotation abbrv : abbrvList) {
+							if(abbrv != null) {
+								try {
+									Abbreviation abbrvOut = new Abbreviation();
+									
+									abbrvOut.setLongForm("NONE");
+									abbrvOut.setAbbreviation(GATEutils.getAnnotationText(abbrv, parsedDoc).orElse("NONE"));
+									
+									List<Annotation> sentenceList = GATEutils.getAnnInDocOrderIntersectAnn(parsedDoc, FreelingParser.mainAnnSet + "_SPA", FreelingParser.sentenceType, abbrv);
+									if(sentenceList != null && sentenceList.size() > 0 && sentenceList.get(0) != null) {
+										abbrvOut.setSentence(GATEutils.getAnnotationText(sentenceList.get(0), parsedDoc).orElse("NONE"));
+									}
+									
+									abbrvOut.setType(abbrvType);
+									
+									retList.add(abbrvOut);
+								}
+								catch(Exception e) {
+									e.printStackTrace();
+								}
+							}
+						}
+					}
+				}
+				catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+		} catch (Exception e) {
+			logger.error("\nError parsing GATE document by BioAB Long Form Spotter - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
+			e.printStackTrace();
+		}
+		
+		
+		
+		return retList;		
+	}
+	
 
-
+	
+	
 
 }

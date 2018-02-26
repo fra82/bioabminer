@@ -1,3 +1,8 @@
+/**
+ * Biomedical Abbreviation Miner (BioAB Miner)
+ * 
+ */
+
 package es.imim.ibi.bioab.exec.pdf;
 
 import java.io.ByteArrayOutputStream;

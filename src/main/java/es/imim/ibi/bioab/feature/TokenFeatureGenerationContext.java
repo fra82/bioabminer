@@ -1,3 +1,7 @@
+/**
+ * Biomedical Abbreviation Miner (BioAB Miner)
+ * 
+ */
 package es.imim.ibi.bioab.feature;
 
 import java.util.HashMap;
