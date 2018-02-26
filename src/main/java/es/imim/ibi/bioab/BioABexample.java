@@ -1,12 +1,8 @@
 package es.imim.ibi.bioab;
 
-import java.io.File;
-import java.util.Set;
-
 import org.backingdata.gateutils.GATEfiles;
 
 import es.imim.ibi.bioab.exec.BioABminer;
-import es.imim.ibi.bioab.exec.resource.BioABabbrvLFspotter;
 import gate.Document;
 
 /**
@@ -23,8 +19,13 @@ public class BioABexample {
 
 
 		// Initialize BioAB Miner by specifying the full path of the property file
-		BioABminer.initABBRV("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
-
+		BioABminer.initNLP("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
+		
+		
+		Document doc = BioABminer.getDocumentFormPDF("/home/ronzano/Downloads/5416-4761-1-PB.pdf");
+		BioABminer.extractNLPfeatures(doc);
+		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Downloads/BioABdocument_PDF.xml");
+		
 		/*
 		// Parse GATE XML documents and store abbreviations as GATE text annotations
 		String inputGATEdoc = "/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR/DOC_128_BARR_ibereval_training_full_MANanno_1v_PROC.xml";
@@ -50,8 +51,10 @@ public class BioABexample {
 		BioABminer.extractAbbreviations(docToParse);
 		System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + inputGATEdoc);
 		GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/BioABdocument2.xml");
-		 */
-
+		*/
+		
+		
+		/*
 		File[] BARRfiles = (new File("/home/ronzano/Desktop/Hackathon_PLN/TrainingDocuments_BARR")).listFiles();
 		
 		int fileCounter = 0;
@@ -59,9 +62,9 @@ public class BioABexample {
 			if(BARRfile != null && BARRfile.exists() && BARRfile.isFile() && BARRfile.getName().endsWith(".xml")) {
 				try {
 					
-					if(++fileCounter > 100) {
-						break;
-					}
+					// if(++fileCounter > 100) {
+					//	break;
+					// }
 					
 					System.out.println("\n-------------------------------------------------");
 					System.out.println(" > Start processing document: " + BARRfile.getName() + "...");
@@ -74,8 +77,8 @@ public class BioABexample {
 					}
 					BioABminer.extractAbbreviations(docToParse);
 					System.out.println(" > Doc parsed in " + (System.currentTimeMillis() - startTime) + " ms - " + BARRfile.getName());
-					GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/" + BARRfile.getName().replace(".xml", "_TEST.xml"));
-					System.out.println(" > Doc stored to " + "/home/ronzano/Downloads/" + BARRfile.getName().replace(".xml", "_TEST.xml"));
+					// GATEfiles.storeGateXMLToFile(docToParse, "/home/ronzano/Downloads/" + BARRfile.getName().replace(".xml", "_TEST.xml"));
+					// System.out.println(" > Doc stored to " + "/home/ronzano/Downloads/" + BARRfile.getName().replace(".xml", "_TEST.xml"));
 					
 					docToParse.cleanup();
 					System.gc();
@@ -111,7 +114,7 @@ public class BioABexample {
 		System.out.println(" > STAT > longFormWithoutAnyCandidateSpanMatch >" + BioABabbrvLFspotter.longFormWithoutAnyCandidateSpanMatch);
 		System.out.println(" > STAT > longFormMatchByTypeSingle >" + BioABabbrvLFspotter.longFormMatchByTypeSingle);
 		System.out.println(" > STAT > longFormMatchByTypeMulti >" + BioABabbrvLFspotter.longFormMatchByTypeMulti);
-
+		*/
 	}
 
 }

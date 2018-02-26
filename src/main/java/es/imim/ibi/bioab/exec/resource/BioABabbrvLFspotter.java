@@ -16,16 +16,21 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.backingdata.gateutils.GATEutils;
 import org.backingdata.gateutils.generic.GenericUtil;
 import org.backingdata.gateutils.generic.PropertyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
+
+import es.imim.ibi.bioab.feature.TokenAnnConst;
 import es.imim.ibi.bioab.feature.generator.StringInList;
 import es.imim.ibi.bioab.nlp.freeling.FreelingParser;
 import es.imim.ibi.bioab.nlp.mate.MateParser;
 import gate.Annotation;
+import gate.Document;
 import gate.Factory;
 import gate.FeatureMap;
 import gate.ProcessingResource;
@@ -54,6 +59,9 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 	public static final String SEDOMtype = "Abbreviation_fromSEDOM";
 	public static final String longFormType = "LONG";
 	public static final String shortFormType = "SHORT";
+	public static final String shortLongFormType = "SF - LF";
+	
+	private static int relationID = 0;
 
 	private static Map<String, Set<String>> abbreviationLFmap = new HashMap<String, Set<String>>();
 
@@ -302,7 +310,67 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 		// Look for a Long Form for each abbreviation
 		for(Entry<String, Set<Annotation>> abbreviationToScan : abbreviationToScanSet.entrySet()) {
 			try {
-				spotLongForm(abbreviationToScan.getValue());
+				
+				Pair<Set<Annotation>, String> spottedLongForm = spotLongForm(abbreviationToScan.getValue());
+				
+				Set<Annotation> choseLFset = spottedLongForm.getLeft();
+				String choiceStrategy = spottedLongForm.getRight();
+
+				// Special case: COORDINATION
+				// Special case 1 for STRATEGY 3: (fibrosis intersticial y atrofia tubular [FI y AT])
+				//  > Check for the previous SF in the sentence if not get start offset of sentence
+				if(choseLFset == null) {
+					try {
+						Annotation shortForm = abbreviationToScan.getValue().iterator().next();
+						List<Annotation> sentenceList = GATEutils.getAnnInDocOrderIntersectAnn(this.document, this.sentenceAnnSet, this.sentenceType, shortForm);
+
+						if(sentenceList != null && sentenceList.size() > 0 && sentenceList.get(0) != null) {
+
+							if(sentenceList.size() > 1) {
+								logger.debug("More then one sentence identified for abbreviation: " +  GATEutils.getAnnotationText(shortForm, this.document).orElse("NULL"));
+							} 
+
+							Annotation sentenceAnno = sentenceList.get(0);
+
+							// Get the end offset of the preceding abbreviation that is more than 15 chars before the beginning of the current one or get the start offset of the sentence
+							String previousAbbreviationsInSentenceSel = "";
+							long endOffsetOfPreviousAbbreviationsInSentenceSel = sentenceAnno.getStartNode().getOffset();
+							for(Entry<String, Set<Annotation>> abbreviationToScan_INT : abbreviationToScanSet.entrySet()) {
+								long startOffsetOfAbbreviation = Long.valueOf(abbreviationToScan_INT.getKey().split("_")[0]);
+								long endOffsetOfAbbreviation = Long.valueOf(abbreviationToScan_INT.getKey().split("_")[0]);
+
+								if(startOffsetOfAbbreviation >= sentenceAnno.getStartNode().getOffset() && endOffsetOfAbbreviation <= sentenceAnno.getEndNode().getOffset() &&
+										endOffsetOfAbbreviation <= shortForm.getStartNode().getOffset() && (shortForm.getStartNode().getOffset() - endOffsetOfAbbreviation) > 15l && 
+										(endOffsetOfPreviousAbbreviationsInSentenceSel == -1 || endOffsetOfPreviousAbbreviationsInSentenceSel < endOffsetOfAbbreviation)) {
+									previousAbbreviationsInSentenceSel = abbreviationToScan_INT.getKey();
+									endOffsetOfPreviousAbbreviationsInSentenceSel = endOffsetOfAbbreviation;
+								}
+							}
+
+							//  > Get the LFs between the startOffsetSerach and the abbrevAnn start offset
+							List<Annotation> previousLFannCOMPLETEList = GATEutils.getAnnInDocOrderContainedOffset(this.document, BioABabbrvSpotter.mainAnnSet, BioABabbrvSpotter.longFormType, 
+									endOffsetOfPreviousAbbreviationsInSentenceSel, shortForm.getStartNode().getOffset());
+							List<Annotation> previousLFannCOMPLETEListReverse = Lists.reverse(previousLFannCOMPLETEList); // Scan from the one that is far away 
+							for(Annotation previousLF : previousLFannCOMPLETEListReverse) {
+								Set<Annotation> previousLFlist = new HashSet<Annotation>();
+								previousLFlist.add(previousLF);
+								double matchSL = matchShortLong(this.document,  abbreviationToScan.getValue(), previousLFlist);
+								if(previousLF != null && matchSL > 0.5d) {
+									choseLFset = new HashSet<Annotation>();
+									choseLFset.add(previousLF);
+									choiceStrategy = "ST_coordination_" + matchSL;
+								}
+							}
+						}
+					}
+					catch(Exception e) {
+						e.printStackTrace();
+					}
+				}
+				// End special case: COORDINATION
+				
+				generateSF_LFanno(choseLFset, choiceStrategy, abbreviationToScan.getValue());
+				
 			} catch (Exception e) {
 				GenericUtil.notifyException("Error looking for Long Form of the abbreviation " + GATEutils.getAnnotationText(abbreviationToScan.getValue().iterator().next(), this.document).orElse("NULL"), e, logger);
 			}
@@ -317,8 +385,11 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 
 
 
-	private void spotLongForm(Set<Annotation> shortFormSet) {
+	private Pair<Set<Annotation>, String> spotLongForm(Set<Annotation> shortFormSet) {
 
+		Set<Annotation> chosenLFset = null;
+		String choiceStrategy = "";
+		
 		Annotation shortForm = shortFormSet.iterator().next();
 
 		// Retrieve Long forms
@@ -357,7 +428,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 				String annoOffsetKey = longFormCRF.getStartNode().getOffset() + "_" + longFormCRF.getEndNode().getOffset();
 				if(!longFormsToScanMap.containsKey(annoOffsetKey)) longFormsToScanMap.put(annoOffsetKey, new HashSet<Annotation>());
 				longFormsToScanMap.get(annoOffsetKey).add(longFormCRF);
-				// logger.debug("      > CRF long form: '" + GATEutils.getAnnotationText(longFormCRF, this.document).orElse("NULL") + "' (" + longFormCRF.getType() + ")");
+				logger.debug("      > CRF long form: '" + GATEutils.getAnnotationText(longFormCRF, this.document).orElse("NULL") + "' (" + longFormCRF.getType() + ")");
 			}
 			logger.debug(" TOTAL SELECTED long form: " + longFormsToScanMap.size());
 
@@ -370,7 +441,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 				String annoOffsetKey = longFormChunk.getStartNode().getOffset() + "_" + longFormChunk.getEndNode().getOffset();
 				if(!longFormsToScanMap.containsKey(annoOffsetKey)) longFormsToScanMap.put(annoOffsetKey, new HashSet<Annotation>());
 				longFormsToScanMap.get(annoOffsetKey).add(longFormChunk);
-				// logger.debug("      > Chunk long form: '" + GATEutils.getAnnotationText(longFormChunk, this.document).orElse("NULL") + "' (" + longFormChunk.getType() + ", " + GATEutils.getStringFeature(longFormChunk, this.chunkLabelFeat).orElse("NULL") + ")");
+				logger.debug("      > Chunk long form: '" + GATEutils.getAnnotationText(longFormChunk, this.document).orElse("NULL") + "' (" + longFormChunk.getType() + ", " + GATEutils.getStringFeature(longFormChunk, this.chunkLabelFeat).orElse("NULL") + ")");
 			}
 			logger.debug(" TOTAL SELECTED long form: " + longFormsToScanMap.size());
 
@@ -381,17 +452,36 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 				String annoOffsetKey = longFormSEDOM.getStartNode().getOffset() + "_" + longFormSEDOM.getEndNode().getOffset();
 				if(!longFormsToScanMap.containsKey(annoOffsetKey)) longFormsToScanMap.put(annoOffsetKey, new HashSet<Annotation>());
 				longFormsToScanMap.get(annoOffsetKey).add(longFormSEDOM);
-				// logger.debug("      > SEDOM long form: '" + GATEutils.getAnnotationText(longFormSEDOM, this.document).orElse("NULL") + "' (" + longFormSEDOM.getType() + ")");
+				logger.debug("      > SEDOM long form: '" + GATEutils.getAnnotationText(longFormSEDOM, this.document).orElse("NULL") + "' (" + longFormSEDOM.getType() + ")");
 			}
 			logger.debug(" TOTAL SELECTED long form: " + longFormsToScanMap.size());
 
-			// Remove distant LF
-			longFormsToScanMap = longFormFarRemoval(shortForm, longFormsToScanMap);
+			// Remove distant or overlapping LF
+			longFormsToScanMap = longFormFarOverlapRemoval(shortForm, longFormsToScanMap);
 			logger.debug(" TOTAL SELECTED long form after filter: " + longFormsToScanMap.size());
 
 			// Retrieve other facets of the abbreviation
 			boolean betweenParenthesis = isTokenBetweenParenthesis(shortForm);
 			boolean SHORTabbrvType = isSHORTabbrvType(shortForm);
+
+			// Remove LF following the SHORT form if in parenthesis
+			if(betweenParenthesis) {
+				Set<String> longFormToDelSet = new HashSet<String>();
+				long shortFormStartOffset = shortForm.getStartNode().getOffset();
+				for(Entry<String, Set<Annotation>> longFormsToScan : longFormsToScanMap.entrySet()) {
+					long longFormEndNode = Long.valueOf(longFormsToScan.getKey().split("_")[1]);
+					if(longFormEndNode > shortFormStartOffset) {
+						longFormToDelSet.add(longFormsToScan.getKey());
+						logger.debug("      > Removing long form before parenthesis of short form: '" + GATEutils.getAnnotationText(longFormsToScan.getValue().iterator().next(), this.document).orElse("NULL") + 
+								"' (" + longFormsToScan.getValue().iterator().next().getType() + ")");
+					}
+				}
+
+				for(String longFormToDel : longFormToDelSet) {
+					longFormsToScanMap.remove(longFormToDel);
+				}
+				logger.debug(" TOTAL SELECTED long form after parenthesis removal: " + longFormsToScanMap.size());
+			}
 
 			// PRINT INFO
 			logger.debug("");
@@ -410,7 +500,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 			logger.debug("   SHORTabbrvType: " + SHORTabbrvType);
 			logger.debug("********************************************");
 
-			
+
 			/* START STATS */
 			List<Annotation> shortGSlist = GATEutils.getAnnInDocOrderContainedAnn(this.document, "GoldStandard", "SHORT", shortForm);
 			if(shortGSlist != null && shortGSlist.size() == 1 && shortGSlist.get(0) != null) {
@@ -504,7 +594,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 											"\nSHORT: " + GATEutils.getAnnotationText(shortGS, this.document).orElse("NULL") + 
 											" - DOC: " + ((this.document.getName() != null) ? this.document.getName() : "NO_NAME") + 
 											" - LONG " + matchingLlongFormsList.stream().map(anno -> GATEutils.getAnnotationText(anno, this.document).orElse("___")).collect(Collectors.joining(" / ")));
-									
+
 								}
 
 							}
@@ -520,7 +610,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 			}
 			/* END STATS */
 
-			
+
 
 			// Chose the long form
 			logger.debug("");
@@ -530,23 +620,293 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 			} catch (InvalidOffsetException e) {
 				logger.debug("   Context: ERROR");
 			}
-			
 
+
+			if(longFormsToScanMap != null) {
+				
+				// If only one candidate and the abbreviation is SHORT, choose that match
+				if(longFormsToScanMap.size() == 1) {
+					
+					Annotation longFormAnno = longFormsToScanMap.entrySet().iterator().next().getValue().iterator().next();
+					Set<Annotation> longFormAnnoSet = longFormsToScanMap.entrySet().iterator().next().getValue();
+					
+					String shortText = GATEutils.getAnnotationText(shortForm, this.document).orElse(null);
+					String longText = GATEutils.getAnnotationText(longFormAnno, this.document).orElse(null);
+
+					if(shortText.length() >= longText.length()) {
+						chosenLFset = null;
+					}
+					else {
+						
+						boolean isLF_CHUNK = false;
+						for(Annotation longAnnElem : longFormAnnoSet) {
+							if(longAnnElem.getType().equals(this.chunkType)) {
+								isLF_CHUNK = true;
+							}
+						}
+						
+						boolean isLF_CRF = false;
+						for(Annotation longAnnElem : longFormAnnoSet) {
+							if(longAnnElem.getType().equals(BioABabbrvSpotter.abbreviationType)) {
+								isLF_CRF = true;
+							}
+						}
+						
+						boolean isLF_SEDOM = false;
+						for(Annotation longAnnElem : longFormAnnoSet) {
+							if(longAnnElem.getType().equals(SEDOMtype)) {
+								isLF_SEDOM = true;
+							}
+						}
+						
+						if(isLF_CRF || isLF_SEDOM) {
+							// The only candidate long is derived from CRF / SEDOM, accept it
+
+							chosenLFset = longFormsToScanMap.entrySet().iterator().next().getValue();
+							choiceStrategy = "ST_only_one_LF_candidate_CRF_SEDOM";
+							
+						}
+						else {		
+							// The only candidate long is derived from a CHUNK
+
+							// ATTENTION: implement choice strategy
+							double matchScore = matchShortLong(this.document, shortFormSet, longFormAnnoSet);
+
+							if(matchScore > 0.5) {
+								chosenLFset = longFormsToScanMap.entrySet().iterator().next().getValue();
+								choiceStrategy = "ST_only_one_LF_candidate_CHUNK_" + matchScore;
+							}
+						}
+
+					}
+				}
+				else if(longFormsToScanMap.size() > 1) {
+					// If more than one candidate...
+
+					
+					// Rate all candidate
+					Map<String, Double> annotaRatingMap = new HashMap<String, Double>();
+
+					for(Entry<String, Set<Annotation>> annToRate : longFormsToScanMap.entrySet()) {
+						double rankValue = matchShortLong(this.document, shortFormSet, annToRate.getValue());
+						annotaRatingMap.put(annToRate.getKey(), rankValue);
+						logger.debug(" MULTI LF RANKING > '" + GATEutils.getAnnotationText(annToRate.getValue().iterator().next(), this.document).orElse("NULL") + " > RANK: " + rankValue);
+					}
+					
+					// Choose best rank
+					Set<String> bestRankSet = new HashSet<String>();
+					double bestRankValue = -1d;
+					for(Entry<String, Double> ratedAnn : annotaRatingMap.entrySet()) {
+						if(ratedAnn.getValue().doubleValue() == bestRankValue) {
+							bestRankSet.add(ratedAnn.getKey());
+						}
+						else if(ratedAnn.getValue().doubleValue() > bestRankValue) {
+							bestRankValue = ratedAnn.getValue().doubleValue();
+							bestRankSet = new HashSet<String>();
+							bestRankSet.add(ratedAnn.getKey());
+						}
+					}
+
+
+					if(bestRankValue > 0d) {
+						if(bestRankSet.size() == 1 && bestRankValue > 0.5) {
+							// More than one best rank
+							chosenLFset = longFormsToScanMap.get(bestRankSet.iterator().next());
+							choiceStrategy = "ST_3_MULTIPLE_LF_single_best_rank_" + bestRankValue;
+						}
+						else {
+							logger.debug("MULTIPLE BEST-RANK LF:");
+							
+							Set<String> bestRankNotChunk = new HashSet<String>();
+							for(String bestRank : bestRankSet) {
+								Set<Annotation> longFormAnnoSet_INT = longFormsToScanMap.get(bestRank);
+								
+								boolean isLF_CHUNK_INT = false;
+								for(Annotation longAnnElem : longFormAnnoSet_INT) {
+									if(longAnnElem.getType().equals(this.chunkType)) {
+										isLF_CHUNK_INT = true;
+									}
+								}
+								
+								if(!isLF_CHUNK_INT) {
+									bestRankNotChunk.add(bestRank);
+								}
+							}
+
+							
+							if(bestRankNotChunk.size() == 1) {
+								// If there is only one CRF / SEDOM LF among the multiple best rank candidate
+								chosenLFset = longFormsToScanMap.get(bestRankNotChunk.iterator().next());
+								choiceStrategy = "ST_3_MULTIPLE_LF_multi_best_rank_only_one_CRF_SEDOM_" + bestRankValue;
+							}
+							else if(bestRankValue > 0.5) {
+								// If there are multiple candidate with best rank and the best rank is greater than 0.5
+								
+								// DO NOTHING
+								
+							}
+
+						}
+					}
+					else {
+						logger.debug("getRelations > NONE OF THE CANDIDATES CHOSEN, HIGHEST RANK = 0");
+					}
+
+				}
+			}
 
 		}
 		else {
 			logger.debug("No containing sentence identified for abbreviation: " +  GATEutils.getAnnotationText(shortForm, this.document).orElse("NULL"));
 		}
+		
+		return Pair.of(chosenLFset, choiceStrategy);
+	}
+	
+	
+	private void generateSF_LFanno(Set<Annotation> chosenCandidateLFset, String strategy, Set<Annotation> shortFormSet) throws InvalidOffsetException {
+		
+		// If the LF starts with article or prop
+		if(chosenCandidateLFset != null && chosenCandidateLFset.size() > 0 && strategy != null && shortFormSet != null && shortFormSet.size() > 0) {
+			
+			Annotation chosenCandidateLF = chosenCandidateLFset.iterator().next();
+			
+			boolean startOrEndWithSpecialChars = false;
+			String LFtext = GATEutils.getAnnotationText(chosenCandidateLF, this.document).orElse("");
+			long offsetToRemFronNewLF = 0l;
+			if(LFtext.toLowerCase().trim().startsWith("la ") || LFtext.toLowerCase().trim().startsWith("el ") ||
+					LFtext.toLowerCase().trim().startsWith("lo ") || LFtext.toLowerCase().trim().startsWith("de ") ||
+					LFtext.toLowerCase().trim().startsWith("un ") || LFtext.toLowerCase().trim().startsWith("uno ") ||
+					LFtext.toLowerCase().trim().startsWith("una ") || 
+					LFtext.toLowerCase().trim().startsWith("e ") || LFtext.toLowerCase().trim().startsWith("o ") || LFtext.toLowerCase().trim().startsWith("y ")) {
+				startOrEndWithSpecialChars = true;
 
+				if(LFtext.toLowerCase().trim().startsWith("la ") || LFtext.toLowerCase().trim().startsWith("el ") ||
+						LFtext.toLowerCase().trim().startsWith("lo ") || LFtext.toLowerCase().trim().startsWith("de ") ||
+						LFtext.toLowerCase().trim().startsWith("un ")) {
+					offsetToRemFronNewLF = 3l;
+				}
+				else if(LFtext.toLowerCase().trim().startsWith("uno ") || LFtext.toLowerCase().trim().startsWith("una ")) {
+					offsetToRemFronNewLF = 4l;
+				}
+				else if(LFtext.toLowerCase().trim().startsWith("e ") || LFtext.toLowerCase().trim().startsWith("o ") || LFtext.toLowerCase().trim().startsWith("y ")) {
+					offsetToRemFronNewLF = 2l;
+				}
+			}
+
+			if(startOrEndWithSpecialChars && offsetToRemFronNewLF > 0l) {
+				long newStartNode = chosenCandidateLFset.iterator().next().getStartNode().getOffset() + offsetToRemFronNewLF;
+
+				if(newStartNode < chosenCandidateLFset.iterator().next().getEndNode().getOffset()) {
+					// Old Candidate LONG
+					this.document.getAnnotations(BioABabbrvSpotter.mainAnnSet).add(chosenCandidateLF.getStartNode().getOffset(), chosenCandidateLF.getEndNode().getOffset(),
+							BioABabbrvSpotter.longFormType + "_OLD", chosenCandidateLF.getFeatures());
+					// New Candidate LONG
+					Integer newLongId = this.document.getAnnotations(BioABabbrvSpotter.mainAnnSet).add(newStartNode, chosenCandidateLF.getEndNode().getOffset(),
+							BioABabbrvSpotter.longFormType, chosenCandidateLF.getFeatures());
+					if(newLongId != null) {
+						Annotation newChosenCandidateLF = this.document.getAnnotations(mainAnnSet).get(newLongId);
+						if(newChosenCandidateLF != null) {
+							chosenCandidateLF = newChosenCandidateLF;
+						}
+					}
+				}
+			}
+			
+			// Generate LF - SF annotation
+			if(chosenCandidateLF != null) {
+				int relID = relationID++;
+				
+				// New Candidate LONG
+				Integer newLongId = this.document.getAnnotations(mainAnnSet).add(chosenCandidateLF.getStartNode().getOffset(), chosenCandidateLF.getEndNode().getOffset(),
+						longFormType, chosenCandidateLF.getFeatures());
+				Annotation LONG_FORM = null;
+				if(newLongId != null) {
+					Annotation newChosenLF = this.document.getAnnotations(mainAnnSet).get(newLongId);
+					if(newChosenLF != null) {
+						LONG_FORM = newChosenLF;
+						LONG_FORM.setFeatures((chosenCandidateLF.getFeatures() == null) ? Factory.newFeatureMap() : chosenCandidateLF.getFeatures());
+						LONG_FORM.getFeatures().put("strategy", ((strategy != null) ? strategy : "NULL"));
+						LONG_FORM.getFeatures().put("relationID", relID + "");
+					}
+				}
+				
+				if(LONG_FORM != null) {
+					
+					// New Candidate SHORT
+					Annotation shortForm = shortFormSet.iterator().next();
+					Integer newShortId = this.document.getAnnotations(mainAnnSet).add(shortForm.getStartNode().getOffset(), shortForm.getEndNode().getOffset(),
+							shortFormType, chosenCandidateLF.getFeatures());
+					Annotation SHORT_FORM = null;
+					if(newShortId != null) {
+						Annotation newChosenSF = this.document.getAnnotations(mainAnnSet).get(newShortId);
+						if(newChosenSF != null) {
+							SHORT_FORM = newChosenSF;
+							SHORT_FORM.setFeatures((shortForm.getFeatures() == null) ? Factory.newFeatureMap() : shortForm.getFeatures());
+							SHORT_FORM.getFeatures().put("strategy", ((strategy != null) ? strategy : "NULL"));
+							SHORT_FORM.getFeatures().put("relationID", relID + "");
+						}
+					}
+					
+					if(SHORT_FORM != null) {
+						long startSF_LFann = (shortForm.getStartNode().getOffset() < LONG_FORM.getStartNode().getOffset()) ? shortForm.getStartNode().getOffset() : LONG_FORM.getStartNode().getOffset();
+						long endSF_LFann = (shortForm.getEndNode().getOffset() < LONG_FORM.getEndNode().getOffset()) ? LONG_FORM.getEndNode().getOffset() : shortForm.getEndNode().getOffset();
+
+						// Add the real long form corresponding to the short one, chosen among the set of "LONG_CANDIDATE" (chosen by ML)
+						// and "Chunk" annotations (added by Freeling)
+						// Removed: LONG_CANDIDATE
+						// try {
+						// 	FeatureMap relFm = Factory.newFeatureMap();
+						// 	relFm.put("strategy", ((choiceStrategy != null) ? choiceStrategy : "NULL"));
+						// 	gateDoc.getAnnotations("ABBRV_" + execVersion + "_FINAL_" + gsVersion).add(chosenLF.getStartNode().getOffset(), chosenLF.getEndNode().getOffset(), "LONG", relFm);
+						// } catch (InvalidOffsetException e) {
+						// 	e.printStackTrace();
+						// }
+						
+						FeatureMap fm = Factory.newFeatureMap();
+						fm.put("strategy", ((strategy != null) ? strategy : "NULL"));
+						fm.put("relationID", relID + "");
+						Integer newLongShortId = this.document.getAnnotations(mainAnnSet).add(startSF_LFann, endSF_LFann, shortLongFormType, fm);
+						
+						Annotation LONG_SHORT_FORM = null;
+						if(newLongShortId != null) {
+							Annotation newChosenLSF = this.document.getAnnotations(mainAnnSet).get(newLongShortId);
+							if(newChosenLSF != null) {
+								LONG_SHORT_FORM = newChosenLSF;
+								logger.info("Generated " + shortLongFormType + " annotaiton: " + GATEutils.getAnnotationText(LONG_SHORT_FORM, this.document));
+								logger.info("   > " + shortFormType + " annotaiton: " + GATEutils.getAnnotationText(SHORT_FORM, this.document));
+								logger.info("   > " + longFormType + " annotaiton: " + GATEutils.getAnnotationText(LONG_FORM, this.document));
+								logger.info("   > STRATEGY: " + ((strategy != null) ? strategy : "NULL"));
+							}
+						}
+						
+						
+					}
+					else {
+						logger.debug("Issues generating SHORT form!");
+					}
+					
+				}
+				else {
+					logger.debug("Issues generating LONG form!");
+				}
+				
+				
+			}
+			else {
+				// DO NOT REMOVE THE SHORT ANNOTATION - IT IS MORE LIKELY IT IS A SHORT ANNOTATION FOR WHICH THE LF COULDN'T BE FOUND
+				// if(isSHORT) {
+				// Remove the SHORT annotation for the short form since no matching LF has been found
+				// abbrvInSentToDel.add(shortIntersectAnnList.get(0));
+				// }
+				
+			}
+			
+		}
 
 	}
 
-	/**
-	 * New short form identification
-	 * 
-	 * @param abbreviationSet
-	 * @return
-	 */
+	
 	private Set<Annotation> getTokenInParenthesisNotInSet() {
 
 		Set<Annotation> addedAbbreviations = new HashSet<Annotation>();
@@ -611,8 +971,9 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 
 
 	private boolean checkChunkType(Annotation anno) {
-		boolean considerChunkLongForm = false;
-
+		boolean considerChunkLongForm = true;
+		
+		/*
 		if(anno != null && anno.getType().equals(this.chunkType) && anno.getFeatures() != null) {
 			String chunkLabel = GATEutils.getStringFeature(anno, this.chunkLabelFeat).orElse("___NO_FEATURE__");
 
@@ -627,6 +988,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 			}
 
 		}
+		*/
 
 		/*
 		grup-nom-fp=19
@@ -675,6 +1037,137 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 		return retLongFormSEDOMlist;
 	}
 
+	public double matchShortLong(Document gateDoc, Set<Annotation> shortAnnSet, Set<Annotation> longAnnSet) {
+
+		if(shortAnnSet != null && longAnnSet != null && shortAnnSet.size() > 0 && longAnnSet.size() > 0) {
+			
+			Annotation shortAnn = shortAnnSet.iterator().next();
+			Annotation longAnn = longAnnSet.iterator().next();
+			
+			String shortText = GATEutils.getAnnotationText(shortAnn, gateDoc).orElse("");
+			shortText = shortText.replaceAll("\\s+","");
+			String longText = GATEutils.getAnnotationText(longAnn, gateDoc).orElse(null);
+			
+			boolean isSF_SHORT = false;
+			for(Annotation shortAnnElem : shortAnnSet) {
+				if(shortAnnElem.getType().equals(BioABabbrvSpotter.short_abbrvType)) {
+					isSF_SHORT = true;
+				}
+			}
+			
+			boolean isLF_CHUNK = false;
+			for(Annotation longAnnElem : longAnnSet) {
+				if(longAnnElem.getType().equals(this.chunkType)) {
+					isLF_CHUNK = true;
+				}
+			}
+			
+			boolean isLF_CRF = false;
+			for(Annotation longAnnElem : longAnnSet) {
+				if(longAnnElem.getType().equals(BioABabbrvSpotter.abbreviationType)) {
+					isLF_CRF = true;
+				}
+			}
+			
+			boolean isLF_SEDOM = false;
+			for(Annotation longAnnElem : longAnnSet) {
+				if(longAnnElem.getType().equals(SEDOMtype)) {
+					isLF_SEDOM = true;
+				}
+			}
+			
+			
+			if(shortText != null && longText != null && !shortText.trim().equals("") && !longText.trim().equals("") && shortText.length() < longText.length()) {
+
+				List<Annotation> longTextTokens = GATEutils.getAnnInDocOrderContainedAnn(gateDoc, this.tokenAnnSet,this.tokenType, longAnn);
+				
+				// Not consider long forms starting with article or conjunction
+				if(beginWithArticleOrConj(longAnn, gateDoc)) {
+					return 0d;
+				}
+				
+				// STRATEGY 1 - Match first letter
+				String abbrv1 = ""; // Only n / a / g
+				String abbrv2 = ""; // All tokens
+				for(Annotation annTok : longTextTokens) {
+					if(annTok != null) {
+						String tokenStr = GATEutils.getAnnotationText(annTok, gateDoc).orElse("").trim();						
+						String tokenPOS = GATEutils.getStringFeature(annTok, TokenAnnConst.tokenPOSFeat).orElse("___").trim().toLowerCase();
+						tokenPOS = tokenPOS.trim().toLowerCase();
+						if(tokenPOS.equals("n") || tokenPOS.endsWith("a") || tokenPOS.endsWith("g")) {
+							abbrv1 += (tokenStr != null) ? tokenStr.trim().toLowerCase().charAt(0) : tokenStr;
+						}
+						abbrv2 += (tokenStr != null) ? tokenStr.trim().toLowerCase().charAt(0) : tokenStr;
+					}
+				}
+				
+				// All POS n / a / g
+				String shortTextNoPunct = shortText.replaceAll("-", "").replaceAll("_", "").replaceAll("/", "").replaceAll("\\*", "\\\\*");
+				if(!shortText.equals(shortTextNoPunct)) {
+					System.out.println("SHORT TEXT: " + shortText + " > NO PUNCT: " + shortTextNoPunct);
+				}
+				if(abbrv1.length() == abbrv2.length() && shortText.length() > 1 && 
+						(shortText.trim().toLowerCase().equals(abbrv1.trim().toLowerCase()) || shortTextNoPunct.trim().toLowerCase().equals(abbrv1.trim().toLowerCase()))) {
+					System.out.println("EVAL: " + shortText + " long: " + longText + " - " + ((isSF_SHORT) ? 1.0 : 0.6));
+					return (isSF_SHORT) ? 1.0 : 0.6;
+				}
+
+				// POS other than n / a / g
+				if(abbrv1.length() != abbrv2.length() && shortText.length() > 1 && 
+						(shortText.trim().toLowerCase().equals(abbrv1.trim().toLowerCase()) || shortText.trim().toLowerCase().equals(abbrv2.trim().toLowerCase()) ||
+								shortTextNoPunct.trim().toLowerCase().equals(abbrv1.trim().toLowerCase()) || shortTextNoPunct.trim().toLowerCase().equals(abbrv2.trim().toLowerCase())) ) {
+					System.out.println("EVAL: " + shortText + " long: " + longText + " - " +  ((isSF_SHORT) ? 0.95 : 0.55));
+					return (isSF_SHORT) ? 0.95 : 0.55;
+				}
+
+				// Auto build abbreviation
+				String abbrv3 = "";
+				String[] longFormSplit = longText.split(" ");
+				for(String longElem : longFormSplit) {
+					if(longElem != null && longElem.length() > 2) {
+						abbrv3 += longElem.trim().toLowerCase().charAt(0);
+					}
+				}
+
+				if(shortText.length() > 1 && shortText.trim().toLowerCase().equals(abbrv3.trim().toLowerCase())) {
+					System.out.println("EVAL: " + shortText + " long: " + longText + " - " + ((isSF_SHORT) ? 0.93 : 0.53));
+					return (isSF_SHORT) ? 0.93 : 0.53;
+				}
+				
+				
+				System.out.println("EVAL: " + shortText + " long: " + longText + " - " + 0.1);
+				return 0.1d;
+			}
+		}
+
+		System.out.println("EVAL - " + 0);
+		return 0d;
+	}
+	
+	
+	/**
+	 * Check first token POS
+	 * 
+	 * @param ann
+	 * @param doc
+	 * @return
+	 */
+	public boolean beginWithArticleOrConj(Annotation ann, Document doc) {
+
+		if(ann != null && doc != null) {
+			List<Annotation> longTextTokens = GATEutils.getAnnInDocOrderContainedAnn(doc, this.tokenAnnSet, this.tokenType, ann);
+
+			if(longTextTokens != null && longTextTokens.size() > 0 && longTextTokens.get(0) != null) {
+				String POSofFirstToken = GATEutils.getStringFeature(longTextTokens.get(0), "POS").orElse("____").trim().toLowerCase();
+				if(POSofFirstToken.toLowerCase().equals("c") || POSofFirstToken.toLowerCase().equals("s") || POSofFirstToken.toLowerCase().equals("d") || POSofFirstToken.toLowerCase().equals("p")) {
+					return true;
+				}
+			}
+		}
+
+		return false;		
+	}
+
 
 	private boolean isTokenBetweenParenthesis(Annotation shortFormAnno) {
 
@@ -714,7 +1207,7 @@ public class BioABabbrvLFspotter extends AbstractLanguageAnalyser implements Pro
 	}
 
 
-	private Map<String, Set<Annotation>> longFormFarRemoval(Annotation shortFormAnno, Map<String, Set<Annotation>> longFormList) {
+	private Map<String, Set<Annotation>> longFormFarOverlapRemoval(Annotation shortFormAnno, Map<String, Set<Annotation>> longFormList) {
 		Map<String, Set<Annotation>> longFormFilteredMapRet = new HashMap<String, Set<Annotation>>();
 
 		if(shortFormAnno != null && longFormList != null && longFormList.size() > 0) {

@@ -132,6 +132,12 @@
 			<groupId>org.backingdata.nlp</groupId>
 			<artifactId>gateutils</artifactId>
 			<version>0.3</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-io</groupId>
+					<artifactId>commons-io</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<!-- Freeling 4.0 (from Backingdata maven repo) -->
@@ -167,6 +173,20 @@
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
 			<version>23.0</version>
+		</dependency>
+
+		<!-- GROBID -->
+		<dependency>
+			<groupId>org.grobid.core</groupId>
+			<artifactId>grobid-core</artifactId>
+			<version>0.4.1</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.6</version>
 		</dependency>
 
 

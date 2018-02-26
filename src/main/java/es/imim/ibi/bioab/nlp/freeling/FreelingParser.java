@@ -138,6 +138,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 	private String analysisLang = null;
 	private String addAnalysisLangToAnnSetName = null;
 	private LangENUM analysisLangENUM = null;
+	private Boolean onlySentenceSplit = null;
 	
 	public String getSentenceAnnotationSetToAnalyze() {
 		return sentenceAnnotationSetToAnalyze;
@@ -180,6 +181,16 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 	public void setAddAnalysisLangToAnnSetName(String addAnalysisLangToAnnSetName) {
 		this.addAnalysisLangToAnnSetName = addAnalysisLangToAnnSetName;
 	}
+	
+	public Boolean getOnlySentenceSplit() {
+		return onlySentenceSplit;
+	}
+	
+	@RunTime
+	@CreoleParameter(defaultValue = "false", comment = "If true, only sentence splitting will be performed")
+	public void setOnlySentenceSplit(Boolean onlySentenceSplit) {
+		this.onlySentenceSplit = onlySentenceSplit;
+	}
 
 	/**
 	 * Initialize Freeling and load resources in a specific language
@@ -215,9 +226,12 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 			logger.info("Initializing Freeling (language " + lang + ")...");
 
 			// System.loadLibrary("libfreeling_javaAPI");
-			System.load("/usr/local/FreeLing-4.0/lib/libfreeling-4.0.so");
-			System.load("/home/ronzano/Downloads/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
-
+			// System.load("/usr/local/FreeLing-4.0/lib/libfreeling-4.0.so");
+			// System.load("/home/ronzano/Downloads/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
+			// Laptop
+			System.load("/usr/local/lib/libfreeling-4.0.so");
+			System.load("/home/ronzano/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
+			
 			Util.initLocale("default");
 
 			if(lgid == null) {
@@ -334,6 +348,11 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 		if(sentenceAnnotationSetToAnalyze != null && !sentenceAnnotationSetToAnalyze.equals("") &&
 				sentenceAnnotationTypeToAnalyze != null && !sentenceAnnotationTypeToAnalyze.equals("")) {
 			// Parse sentence by sentence with Freeling
+			
+			if(onlySentenceSplit != null && onlySentenceSplit == true) {
+				logger.info("Only sentence split performed by Freeling.");
+				return;
+			}
 
 			// Transferring sentences
 			if(!sentenceAnnotationSetToAnalyze.equals(mainAnnSet)) {
@@ -414,6 +433,11 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 				}
 			}
 
+			if(onlySentenceSplit != null && onlySentenceSplit == true) {
+				logger.info("Only sentence split performed by Freeling.");
+				return;
+			}
+			
 			for(Entry<Sentence, Annotation> sentenceID : sentenceIDannGATEMap.entrySet()) {
 				addSentenceWordAnnotations(sentenceID.getKey(), sentenceID.getValue(), doc, false);
 			}
