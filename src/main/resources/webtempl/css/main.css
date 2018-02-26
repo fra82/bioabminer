@@ -1,0 +1,177 @@
+/* https://www.crazyegg.com/blog/website-color-palettes/ - num 3 */
+
+.pageStyle {
+     width: 95%;
+     margin: 0 auto;
+     font-family: 'Inder', sans-serif; 
+     line-height: 28px;
+     margin-bottom: 15px; 
+     color: #666; 
+}
+
+h1 { color: #4B490B; font-size: 48px; font-family: 'Signika', sans-serif; padding-bottom: 10px; }
+
+h2 { color: #58351A; font-size: 28px; font-family: 'Signika', sans-serif; padding-bottom: 10px; }
+
+p { font-family: 'Inder', sans-serif; line-height: 28px; margin-bottom: 15px; color: #666; }
+
+a { color: #ff4411; transition: .5s; -moz-transition: .5s; -webkit-transition: .5s; -o-transition: .5s; }
+
+a:hover { color: #a03c21 }
+
+.mainTitle {
+	color: #005A31;
+	font-size: 190%;
+	font-weight: bold;
+}
+
+.errorDiv {
+	margin: 10px;
+	padding: 20px;
+	border: 2px solid #CBE32D;
+	overflow: hidden;
+}
+
+.container {
+    background-color:#ECECEA;
+    padding: 5px;
+    border:1px solid #d3d3d3;
+    margin-top: 3px;
+    margin-bottom: 10px;
+}
+.container div {
+    
+}
+.container .header {
+    background-color:#FFFCFC;
+    padding: 2px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.container .content {
+    background-color:#F0DFAB;
+    display: none;
+    padding : 5px;
+    overflow: scroll;
+}
+
+
+
+/* Head div */
+.headDiv {
+	border: 2px solid #CBE32D;
+	background-color: #F3FAB6;
+	padding: 10px; 
+	width: 98%;
+	text-align: left;
+	margin-bottom: 20px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+
+/* Sliders */
+.controlDivExt {
+	border: 2px solid #CBE32D;
+	background-color: #F3FAB6;
+	padding: 10px; 
+	width: 98%;
+	text-align: left;
+	overflow: hidden;
+	margin-bottom: 20px;
+	margin-left: auto;
+	margin-right: auto;		
+}
+
+.controlDiv {
+	padding: 10px;
+	text-align: left;
+	overflow: hidden;		
+}
+
+.controlElem {
+ 	margin: 5px;
+        border-radius: 25px;
+	background-color: #ECECEA;
+	border: 2px solid #CBE32D;
+	padding: 10px; 
+	width: 400px;
+	height: 130px;
+	float: left;
+	text-align: center;
+}
+
+.slider {
+    	width: 380px;
+	text-align: center;
+	margin-top: 10px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.sliderTitle {
+	width: 380px;
+	text-align: center;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.buttonAnalyze {
+    	text-align: center;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.buttonStyle {
+    	background-color: #CBE32D;
+    	border: none;
+   	color: #005A31;
+    	padding: 15px 32px;
+	margin-left:30px;
+    	text-align: center;
+    	text-decoration: none;
+    	display: inline-block;
+    	font-size: 16px;
+	cursor: pointer;
+}
+
+
+/* Results */
+.resultDivExt {
+	border: 2px solid #CBE32D;
+	background-color: #F3FAB6;
+	padding: 10px; 
+	width: 98%;
+	text-align: left;
+	overflow: hidden;
+	margin-bottom: 20px;
+	margin-left: auto;
+	margin-right: auto;	
+}
+
+.resultDiv {
+	padding: 10px;
+	text-align: left;
+	overflow: hidden;		
+}
+
+.resCellContainer {
+	background-color: #ECECEA;
+	border: 2px solid #CBE32D;
+	padding: 10px;
+	margin-bottom: 10px;
+	text-align: left;
+	overflow: hidden;
+}
+
+.resCell {
+	padding: 1px;
+	text-align: left;
+	float: left;
+	width: 95%;
+	font-weight: bold;
+}
+
+.tableDivCont {
+	
+}

@@ -89,7 +89,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 	private static final String FREELINGDIR = "/usr/local/FreeLing-4.0";
 	private static String DATA = FREELINGDIR + "/share/freeling/";
 	// *******************************************************************************************
-	
+
 	public static AtomicDouble totSecondsProcessing = new AtomicDouble(0d);
 	public AtomicDouble localSecondsProcessing = new AtomicDouble(0d);
 
@@ -139,7 +139,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 	private String addAnalysisLangToAnnSetName = null;
 	private LangENUM analysisLangENUM = null;
 	private Boolean onlySentenceSplit = null;
-	
+
 	public String getSentenceAnnotationSetToAnalyze() {
 		return sentenceAnnotationSetToAnalyze;
 	}
@@ -161,7 +161,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 			String sentenceAnnotationTypeToAnalyze) {
 		this.sentenceAnnotationTypeToAnalyze = sentenceAnnotationTypeToAnalyze;
 	}
-	
+
 	public String getAnalysisLang() {
 		return analysisLang;
 	}
@@ -181,11 +181,11 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 	public void setAddAnalysisLangToAnnSetName(String addAnalysisLangToAnnSetName) {
 		this.addAnalysisLangToAnnSetName = addAnalysisLangToAnnSetName;
 	}
-	
+
 	public Boolean getOnlySentenceSplit() {
 		return onlySentenceSplit;
 	}
-	
+
 	@RunTime
 	@CreoleParameter(defaultValue = "false", comment = "If true, only sentence splitting will be performed")
 	public void setOnlySentenceSplit(Boolean onlySentenceSplit) {
@@ -226,12 +226,12 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 			logger.info("Initializing Freeling (language " + lang + ")...");
 
 			// System.loadLibrary("libfreeling_javaAPI");
-			// System.load("/usr/local/FreeLing-4.0/lib/libfreeling-4.0.so");
-			// System.load("/home/ronzano/Downloads/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
+			System.load("/usr/local/FreeLing-4.0/lib/libfreeling-4.0.so");
+			System.load("/home/ronzano/Downloads/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
 			// Laptop
-			System.load("/usr/local/lib/libfreeling-4.0.so");
-			System.load("/home/ronzano/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
-			
+			// System.load("/usr/local/lib/libfreeling-4.0.so");
+			// System.load("/home/ronzano/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
+
 			Util.initLocale("default");
 
 			if(lgid == null) {
@@ -344,29 +344,35 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 		Document doc = getDocument();
 		logger.debug("   - Start parsing document: " + ((doc.getName() != null && doc.getName().length() > 0) ? doc.getName() : "NO_NAME") );
 
+		String finalMainAnnSet = mainAnnSet + ((this.getAddAnalysisLangToAnnSetName() != null && this.getAddAnalysisLangToAnnSetName().toLowerCase().trim().equals("true")) ? "_" + this.getAnalysisLang().trim() : "");
 
 		if(sentenceAnnotationSetToAnalyze != null && !sentenceAnnotationSetToAnalyze.equals("") &&
 				sentenceAnnotationTypeToAnalyze != null && !sentenceAnnotationTypeToAnalyze.equals("")) {
 			// Parse sentence by sentence with Freeling
-			
+
 			if(onlySentenceSplit != null && onlySentenceSplit == true) {
 				logger.info("Only sentence split performed by Freeling.");
 				return;
 			}
 
 			// Transferring sentences
-			if(!sentenceAnnotationSetToAnalyze.equals(mainAnnSet)) {
-				GATEutils.transferAnnotations(doc, sentenceAnnotationTypeToAnalyze, sentenceAnnotationTypeToAnalyze, sentenceAnnotationSetToAnalyze, mainAnnSet, null);
+			if(!sentenceAnnotationSetToAnalyze.equals(finalMainAnnSet)) {
+				GATEutils.transferAnnotations(doc, sentenceAnnotationTypeToAnalyze, sentenceAnnotationTypeToAnalyze, sentenceAnnotationSetToAnalyze, finalMainAnnSet, null);
 			}
 
 			// Get all the sentence annotations (sentenceAnnotationSet) from the input annotation set (inputAnnotationSet)
-			AnnotationSet inputAnnotationSet = document.getAnnotations(mainAnnSet);
+			AnnotationSet inputAnnotationSet = document.getAnnotations(finalMainAnnSet);
 			AnnotationSet sentenceAnnotationSet = inputAnnotationSet.get(sentenceAnnotationTypeToAnalyze);
 
 			// Sort sentences
 			List<Annotation> sentencesSorted = sortSetenceList(sentenceAnnotationSet);
-			
-			parsedSentences += annotateSentences(sentencesSorted, doc, this.analysisLangENUM);
+
+			if(onlySentenceSplit == null || onlySentenceSplit == false) {
+				parsedSentences += annotateSentences(sentencesSorted, doc, this.analysisLangENUM);
+			}
+			else {
+				logger.info("Only sentence split performed by Freeling.");
+			}
 
 			long needed = System.currentTimeMillis() - t1;
 			logger.debug("   - End parsing document: " + doc.getName());
@@ -416,7 +422,6 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 					}
 
 					Integer sentenceID = null;
-					String finalMainAnnSet = mainAnnSet + ((this.getAddAnalysisLangToAnnSetName() != null && this.getAddAnalysisLangToAnnSetName().toLowerCase().trim().equals("true")) ? "_" + this.getAnalysisLang().trim() : "");
 					try {
 						sentenceID = doc.getAnnotations(finalMainAnnSet).add(stenStart, stenFinish, sentenceType, Factory.newFeatureMap());
 					} catch (Exception e) {
@@ -433,14 +438,19 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 				}
 			}
 
-			if(onlySentenceSplit != null && onlySentenceSplit == true) {
+			if(onlySentenceSplit == null || onlySentenceSplit == false) {
+				for(Entry<Sentence, Annotation> sentenceID : sentenceIDannGATEMap.entrySet()) {
+					addSentenceWordAnnotations(sentenceID.getKey(), sentenceID.getValue(), doc, false);
+				}
+			}
+			else {
 				logger.info("Only sentence split performed by Freeling.");
-				return;
 			}
 			
-			for(Entry<Sentence, Annotation> sentenceID : sentenceIDannGATEMap.entrySet()) {
-				addSentenceWordAnnotations(sentenceID.getKey(), sentenceID.getValue(), doc, false);
-			}
+			long needed = System.currentTimeMillis() - t1;
+			logger.debug("   - End parsing document: " + doc.getName());
+			logger.debug("     in (seconds): " + (needed / 1000) + ", parsed: " + parsedSentences);
+			logger.debug("********************************************");
 		}
 	}
 
@@ -570,13 +580,13 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 		if(lang == null) {
 			return 0;
 		}
-		
+
 		try {
 			initiFreeling(lang);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		int parsedSentences = 0;
 
 		// Parse each sentence
@@ -981,7 +991,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 
 		// Set the full path to the BioAB Miner property file
 		PropertyManager.setPropertyFilePath("/full/path/to/BioAbMinerConfig.properties");
-		
+
 		// Parsing the following SPanish text (ESstr) by Freeling
 		String strES = "El nuevo coche tiene las ventanas más grandes.";
 
@@ -996,7 +1006,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 			Document gateDoc = gate.Factory.newDocument(strES);
 			FreelingParser_Resource.setDocument(gateDoc);
 			FreelingParser_Resource.execute();
-			
+
 			// Store the results of the parsed text as a 
 			String storageFilePath = "/path/to/store/annotated/text/Freeling_ESstr.xml";
 			GATEfiles.storeGateXMLToFile(gateDoc, storageFilePath);
@@ -1006,7 +1016,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 		catch(Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		// Parsing the following English text (ENstr) by Freeling
 		String strEN = "The new car has bigger windows.";
 
@@ -1021,7 +1031,7 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 			Document gateDoc = gate.Factory.newDocument(strES);
 			FreelingParser_Resource.setDocument(gateDoc);
 			FreelingParser_Resource.execute();
-			
+
 			String storageFilePath = "/path/to/store/annotated/text/Freeling_ENstr.xml";
 			GATEfiles.storeGateXMLToFile(gateDoc, storageFilePath);
 

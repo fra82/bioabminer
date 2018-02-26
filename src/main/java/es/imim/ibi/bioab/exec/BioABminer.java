@@ -142,7 +142,6 @@ public class BioABminer {
 			}
 
 			// Instantiate MATE parser
-			/*
 			try {
 				Gate.getCreoleRegister().registerComponent(MateParser.class);
 
@@ -172,7 +171,6 @@ public class BioABminer {
 				logger.error("\nError loading Freeling ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-			*/
 
 			isInitializedNLP = true;
 		}
@@ -231,7 +229,6 @@ public class BioABminer {
 			}
 
 			// Instantiate BioAB Type Classifier
-			/* DISABLED
 			try {
 				Gate.getCreoleRegister().registerComponent(BioABabbrvTypeClassifier.class);
 
@@ -250,7 +247,6 @@ public class BioABminer {
 				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-			 */
 
 			// Instantiate BioAB LF Spotter
 			try {
@@ -388,9 +384,6 @@ public class BioABminer {
 					logger.error("\nError sanitizing GATE document sentences. ---> " + e.getMessage());
 					e.printStackTrace();
 				}
-				
-				
-				
 			}
 			
 			try {

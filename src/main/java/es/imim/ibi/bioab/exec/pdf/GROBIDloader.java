@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -26,7 +27,7 @@ import org.backingdata.gateutils.generic.PropertyManager;
 import org.grobid.core.engines.Engine;
 import org.grobid.core.engines.config.GrobidAnalysisConfig;
 import org.grobid.core.factory.GrobidFactory;
-import org.grobid.core.mock.MockContext;
+import org.grobid.core.main.GrobidHomeFinder;
 import org.grobid.core.utilities.GrobidProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,10 +53,23 @@ public class GROBIDloader {
 
 	private static Logger logger = LoggerFactory.getLogger(GROBIDloader.class);
 
+	public static String mainAnnoSet = "GROBIDstructure";
+	public static String abstractAnnoType = "abstract";
+	public static String bibEntryAnnoType = "bibEntry";
+	public static String headerAnnoType = "header";
+	public static String secTitleAnnoType = "sectTitle";
+	public static String paperTitleAnnoType = "title";
+	public static String tableAnnoType = "table";
+	public static String figureAnnoType = "figure";
+	public static String keywordsAnnoType = "keywords";
+	public static String authorAnnoType = "author";
+	public static String affiliationAnnoType = "affiliation";
+	public static String addressAnnoType = "address";
+
 	private static Random rnd = new Random();
 	private static boolean isInitialized = false;
 
-	private static void initGROBID() {
+	public static void initGROBID() {
 
 		if(isInitialized) {
 			return;
@@ -67,8 +81,8 @@ public class GROBIDloader {
 				String bioABminerResourceFolder = PropertyManager.getProperty("resourceFolder.fullPath");
 				if(!bioABminerResourceFolder.endsWith(File.separator)) bioABminerResourceFolder += File.separator;
 
-				MockContext.setInitialContext(bioABminerResourceFolder + "grobid-home_0_4_1", bioABminerResourceFolder + "grobid-home_0_4_1" + File.separator + "config" + File.separator + "grobid.properties");      
-				GrobidProperties.getInstance();
+				GrobidHomeFinder grobidHomeFinder = new GrobidHomeFinder(Arrays.asList(bioABminerResourceFolder + "grobid-home_0_5_1//grobid-home"));       
+				GrobidProperties.getInstance(grobidHomeFinder);
 
 				logger.info("GROBID correctly initialized (home set to: " + ((GrobidProperties.get_GROBID_HOME_PATH() != null) ? GrobidProperties.get_GROBID_HOME_PATH() : "NULL") + ").");
 				isInitialized = true;
@@ -89,11 +103,14 @@ public class GROBIDloader {
 
 		Document retDocument = null;
 
+		String bioABminerResourceFolder = PropertyManager.getProperty("resourceFolder.fullPath");
+		if(!bioABminerResourceFolder.endsWith(File.separator)) bioABminerResourceFolder += File.separator;
+
 		// Create temp file
 		String tempFileName = rnd.nextInt(100000) + "_tempGROBID_PDF";
 		File tempPDFfile = null;
 		try {
-			tempPDFfile = File.createTempFile(tempFileName, ".pdf");
+			tempPDFfile = File.createTempFile(tempFileName, ".pdf", new File(bioABminerResourceFolder + "grobid-home_0_5_1" + File.separator  + "tmp"));
 			FileOutputStream fos = new FileOutputStream(tempPDFfile);
 			fos.write(PDFbyteArray);
 			fos.close();
@@ -151,10 +168,7 @@ public class GROBIDloader {
 
 		// Empty temporary folder
 		try {
-			String bioABminerResourceFolder = PropertyManager.getProperty("resourceFolder.fullPath");
-			if(!bioABminerResourceFolder.endsWith(File.separator)) bioABminerResourceFolder += File.separator;
-
-			File GROBIDtempFolder = new File(bioABminerResourceFolder + "grobid-home_0_4_1" + File.separator  + "tmp");
+			File GROBIDtempFolder = new File(bioABminerResourceFolder + "grobid-home_0_5_1" + File.separator  + "tmp");
 			if(GROBIDtempFolder != null && GROBIDtempFolder.exists() && GROBIDtempFolder.isDirectory()) {
 				File[] files = GROBIDtempFolder.listFiles();
 				if(files != null) {
@@ -304,30 +318,37 @@ public class GROBIDloader {
 
 
 	public static Document sanitizeSentences(Document gateDoc, String sentenceAnnoSet, String sentenceAnnoType) {
-		
-		GATEutils.transferAnnotations(gateDoc, "abstract", "abstract", "Original markups", "paperStructure", null);
-		GATEutils.transferAnnotations(gateDoc, "biblStruct", "biblioEntry", "Original markups", "paperStructure", getBiblioEntries);
-		GATEutils.transferAnnotations(gateDoc, "teiHeader", "header", "Original markups", "paperStructure", null);
-		GATEutils.transferAnnotations(gateDoc, "head", "H1", "Original markups", "paperStructure", null);
-		GATEutils.transferAnnotations(gateDoc, "title", "title", "Original markups", "paperStructure", null);
-		GATEutils.transferAnnotations(gateDoc, "table", "table", "Original markups", "paperStructure", null);
-		GATEutils.transferAnnotations(gateDoc, "figure", "figure", "Original markups", "paperStructure", null);
+
+		String originalGROBIDannoSet = "Original markups";
+
+		// Transfer annotations from originalGROBIDannoSet to mainAnnoSet
+		GATEutils.transferAnnotations(gateDoc, "abstract", abstractAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "biblStruct", bibEntryAnnoType, originalGROBIDannoSet, mainAnnoSet, getBiblioEntries);
+		GATEutils.transferAnnotations(gateDoc, "teiHeader", headerAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "head", secTitleAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "title", paperTitleAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "table", figureAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "figure", tableAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "keywords", keywordsAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "author", authorAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "affiliation", affiliationAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
+		GATEutils.transferAnnotations(gateDoc, "address", addressAnnoType, originalGROBIDannoSet, mainAnnoSet, null);
 
 		// Create reference and new annotation sets
-		AnnotationSet sentenceMarkup = ((sentenceAnnoSet != null && !sentenceAnnoSet.equals(""))? gateDoc.getAnnotations(sentenceAnnoSet) : gateDoc.getAnnotations());
-		AnnotationSet outputMarkup = gateDoc.getAnnotations(FreelingParser.mainAnnSet + "_SPA");
-		
+		AnnotationSet originalSentenceAnnoSet = ((sentenceAnnoSet != null && !sentenceAnnoSet.equals(""))? gateDoc.getAnnotations(sentenceAnnoSet) : gateDoc.getAnnotations());
+		AnnotationSet outputSentenceAnnoSet = gateDoc.getAnnotations(FreelingParser.mainAnnSet + "_SPA");
+
 		// Copy all the (inputSentenceAStypeAppo) sentences as annotations of type (inputSentenceAStypeAppo + "_OLD") and delete the original annotations
 		Set<Integer> annIdOfOldSentences = new HashSet<Integer>();
 		Set<Integer> annIdToDelete = new HashSet<Integer>();
-		List<Annotation> inputSentenceAnnotations = gate.Utils.inDocumentOrder(sentenceMarkup.get(sentenceAnnoType));
+		List<Annotation> inputSentenceAnnotations = gate.Utils.inDocumentOrder(originalSentenceAnnoSet.get(sentenceAnnoType));
 		inputSentenceAnnotations.stream().forEach((ann) -> {
 			if(ann != null) {
 				ann.getFeatures().put("OLD_SENTENCE", "TO_DELETE");
 
 				// Generate a copy of the sentence with type sufficed by "_OLD"
 				try {
-					Integer annToDeleteId = sentenceMarkup.add(ann.getStartNode().getOffset(), ann.getEndNode().getOffset(), sentenceAnnoType + "_OLD", ann.getFeatures());
+					Integer annToDeleteId = originalSentenceAnnoSet.add(ann.getStartNode().getOffset(), ann.getEndNode().getOffset(), sentenceAnnoType + "_OLD", ann.getFeatures());
 					annIdOfOldSentences.add(annToDeleteId);
 				} catch (InvalidOffsetException e) {
 					e.printStackTrace();
@@ -341,9 +362,9 @@ public class GROBIDloader {
 		if(annIdToDelete != null && annIdToDelete.size() > 0) {
 			for(Integer annIdToDel : annIdToDelete) {
 				if(annIdToDel != null) {
-					Annotation sentenceAnn = sentenceMarkup.get(sentenceAnnoType).get(annIdToDel);
+					Annotation sentenceAnn = originalSentenceAnnoSet.get(sentenceAnnoType).get(annIdToDel);
 					if(sentenceAnn != null) {
-						sentenceMarkup.remove(sentenceAnn);
+						originalSentenceAnnoSet.remove(sentenceAnn);
 					}
 				}
 			}
@@ -351,12 +372,12 @@ public class GROBIDloader {
 
 
 		// Adding sentences from the GROBID abstract annotations / XML elements
-		List<Annotation> abstractAnnList = GATEutils.getAnnInDocOrder(gateDoc, "Original markups", "abstract");
+		List<Annotation> abstractAnnList = GATEutils.getAnnInDocOrder(gateDoc, mainAnnoSet, abstractAnnoType);
 		if(abstractAnnList.size() > 0) {
 			for(Annotation abstractAnn : abstractAnnList) {
 
 				// Go through sentences overlapping annotation and add as sentences
-				AnnotationSet intersectingSentences = sentenceMarkup.get(sentenceAnnoType + "_OLD", abstractAnn.getStartNode().getOffset(), abstractAnn.getEndNode().getOffset());
+				AnnotationSet intersectingSentences = originalSentenceAnnoSet.get(sentenceAnnoType + "_OLD", abstractAnn.getStartNode().getOffset(), abstractAnn.getEndNode().getOffset());
 				Iterator<Annotation> intersectingSentencesIter = intersectingSentences.iterator();
 				while(intersectingSentencesIter.hasNext()) {
 					Annotation sentenceAnn = intersectingSentencesIter.next();
@@ -375,7 +396,7 @@ public class GROBIDloader {
 						}
 					}
 
-					Integer newSentenceId = addSentence(gateDoc, outputMarkup, sentenceAnnoType, sentenceAnn.getStartNode().getOffset(), sentenceAnn.getEndNode().getOffset(), fm);
+					Integer newSentenceId = addSentence(gateDoc, outputSentenceAnnoSet, sentenceAnnoType, sentenceAnn.getStartNode().getOffset(), sentenceAnn.getEndNode().getOffset(), fm);
 					fm.put("gateID", newSentenceId);
 				}
 			}
@@ -384,10 +405,9 @@ public class GROBIDloader {
 
 		// Adding sentences from the GROBID div annotations
 		Set<Annotation> extractAnnoSet = new HashSet<Annotation>();
-		extractAnnoSet.addAll(GATEutils.getAnnInDocOrder(gateDoc, "Original markups", "body"));
-		extractAnnoSet.addAll(GATEutils.getAnnInDocOrder(gateDoc, "Original markups", "div"));
-		extractAnnoSet.addAll(GATEutils.getAnnInDocOrder(gateDoc, "Original markups", "title"));
-				
+		extractAnnoSet.addAll(GATEutils.getAnnInDocOrder(gateDoc, originalGROBIDannoSet, "body"));
+		extractAnnoSet.addAll(GATEutils.getAnnInDocOrder(gateDoc, originalGROBIDannoSet, "div"));
+
 		Set<Integer> addedSentenceIDs = new HashSet<Integer>();
 		if(extractAnnoSet != null && extractAnnoSet.size() > 0) {
 			Iterator<Annotation> extractAnnoSetIter = extractAnnoSet.iterator();
@@ -396,7 +416,7 @@ public class GROBIDloader {
 				Annotation textContentAnn = extractAnnoSetIter.next();
 
 				// Go through sentences overlapping annotation and add as sentences
-				AnnotationSet intersectingSentences = sentenceMarkup.get(sentenceAnnoType + "_OLD", textContentAnn.getStartNode().getOffset(), textContentAnn.getEndNode().getOffset());
+				AnnotationSet intersectingSentences = originalSentenceAnnoSet.get(sentenceAnnoType + "_OLD", textContentAnn.getStartNode().getOffset(), textContentAnn.getEndNode().getOffset());
 				Iterator<Annotation> intersectingSentencesIter = intersectingSentences.iterator();
 				while(intersectingSentencesIter.hasNext()) {
 					Annotation sentenceAnn = intersectingSentencesIter.next();
@@ -405,14 +425,14 @@ public class GROBIDloader {
 						continue;
 					}
 
-					// Check if the sentence is included or is equal to an header
+					// Check if the sentence is included or is equal to an header [-5, +5] chars offset
 					boolean sentenceEqualToSectionTitle = false;
 
 					List<String> headersAnnName = new ArrayList<String>();
 					headersAnnName.add("H1");
 
 					for(String headName : headersAnnName) {
-						AnnotationSet headersAnns = gateDoc.getAnnotations("paperStructure").get(headName);
+						AnnotationSet headersAnns = gateDoc.getAnnotations(mainAnnoSet).get(headName);
 						if(headersAnns != null && headersAnns.size() > 0) {
 							Iterator<Annotation> headersAnnsIter = headersAnns.iterator();
 							while(headersAnnsIter.hasNext()) {
@@ -458,17 +478,69 @@ public class GROBIDloader {
 						}
 					}
 
-					Integer newSentenceId = addSentence(gateDoc, outputMarkup, sentenceAnnoType, sentenceAnn.getStartNode().getOffset(), sentenceAnn.getEndNode().getOffset(), fm);
+					Integer newSentenceId = addSentence(gateDoc, outputSentenceAnnoSet, sentenceAnnoType, sentenceAnn.getStartNode().getOffset(), sentenceAnn.getEndNode().getOffset(), fm);
 					fm.put("gateID", newSentenceId);
 
 				}
 			}
 		}
 
+		// Add title as sentence
+		List<Annotation> paperTitleAnnoList = GATEutils.getAnnInDocOrder(gateDoc, mainAnnoSet, paperTitleAnnoType);
+		if(paperTitleAnnoList != null && paperTitleAnnoList.size() > 0) {
+			for(Annotation anno : paperTitleAnnoList) {
+				FeatureMap fm = new SimpleFeatureMapImpl();
+
+				fm.put("GROBID_from", "title");
+
+				// Import PDFX features in the new sentence annotation (names prefixed by 'PDFX_')
+				// boolean confidenceTextChunkPossible = false;
+				for(Map.Entry<Object, Object> entry : anno.getFeatures().entrySet()) {
+					try {
+						String featName = (String) entry.getKey();
+						fm.put("GROBID__" + featName, entry.getValue());
+					}
+					catch (Exception e) {
+
+					}
+				}
+
+
+				Integer newSentenceId = addSentence(gateDoc, outputSentenceAnnoSet, sentenceAnnoType, anno.getStartNode().getOffset(), anno.getEndNode().getOffset(), fm);
+				fm.put("gateID", newSentenceId);
+			}
+		}
+
+		// Add title as sentence
+		List<Annotation> paperSecTitleAnnoList = GATEutils.getAnnInDocOrder(gateDoc, mainAnnoSet, secTitleAnnoType);
+		if(paperSecTitleAnnoList != null && paperSecTitleAnnoList.size() > 0) {
+			for(Annotation anno : paperSecTitleAnnoList) {
+				FeatureMap fm = new SimpleFeatureMapImpl();
+
+				fm.put("GROBID_from", "secTitle");
+
+				// Import PDFX features in the new sentence annotation (names prefixed by 'PDFX_')
+				// boolean confidenceTextChunkPossible = false;
+				for(Map.Entry<Object, Object> entry : anno.getFeatures().entrySet()) {
+					try {
+						String featName = (String) entry.getKey();
+						fm.put("GROBID__" + featName, entry.getValue());
+					}
+					catch (Exception e) {
+
+					}
+				}
+
+
+				Integer newSentenceId = addSentence(gateDoc, outputSentenceAnnoSet, sentenceAnnoType, anno.getStartNode().getOffset(), anno.getEndNode().getOffset(), fm);
+				fm.put("gateID", newSentenceId);
+			}
+		}
+
 		// If there is no abstract, all sentences from the first to the beginning of the first section are abstract
-		List<Annotation> abstractAnnotationList = GATEutils.getAnnInDocOrder(gateDoc, "paperStructure", "abstract");
+		List<Annotation> abstractAnnotationList = GATEutils.getAnnInDocOrder(gateDoc, mainAnnoSet, abstractAnnoType);
 		if(CollectionUtils.isEmpty(abstractAnnotationList)) {
-			Optional<Annotation> h1AnnList = GATEutils.getFirstAnnotationInDocOrder(gateDoc, "paperStructure", "H1");
+			Optional<Annotation> h1AnnList = GATEutils.getFirstAnnotationInDocOrder(gateDoc, mainAnnoSet, secTitleAnnoType);
 			if(h1AnnList.isPresent()) {
 				List<Annotation> abstractSentenceList = GATEutils.getAnnInDocOrderContainedOffset(gateDoc, sentenceAnnoSet, sentenceAnnoType,
 						0l, h1AnnList.get().getStartNode().getOffset());
@@ -476,7 +548,7 @@ public class GROBIDloader {
 					Long initialAbstractOffset = abstractSentenceList.get(0).getStartNode().getOffset();
 					Long finalAbstractOffset = abstractSentenceList.get(abstractSentenceList.size() - 1).getEndNode().getOffset();
 					try {
-						gateDoc.getAnnotations("paperStructure").add(initialAbstractOffset, finalAbstractOffset, "abstract", Factory.newFeatureMap());
+						gateDoc.getAnnotations(mainAnnoSet).add(initialAbstractOffset, finalAbstractOffset, abstractAnnoType, Factory.newFeatureMap());
 					} catch (InvalidOffsetException e) {
 						/* Do nothing */
 					}
@@ -485,7 +557,7 @@ public class GROBIDloader {
 		}
 
 		// Delete all sentences and header annotations that are after the first bibliographic entry or the section headers that have more than 14 tokens
-		Annotation firstBibEntryAnn = GATEutils.getFirstAnnotationInDocOrder(gateDoc, "paperStructure", "biblioEntry").orElse(null);
+		Annotation firstBibEntryAnn = GATEutils.getFirstAnnotationInDocOrder(gateDoc, mainAnnoSet, bibEntryAnnoType).orElse(null);
 		if(firstBibEntryAnn != null) {
 			Long firstBibEntryStartOffset = firstBibEntryAnn.getStartNode().getOffset();
 			if(firstBibEntryStartOffset != null) {
@@ -496,8 +568,8 @@ public class GROBIDloader {
 				annTypesToRemove.add("H1");
 
 				for(String annTypeToRem : annTypesToRemove) {
-					List<Annotation> sentenceAnnList_1 = GATEutils.getAnnInDocOrder(gateDoc, "paperStrcutre", annTypeToRem);
-					List<Annotation> sentenceAnnList_2 = GATEutils.getAnnInDocOrder(gateDoc, sentenceAnnoSet, annTypeToRem);
+					List<Annotation> sentenceAnnList_1 = GATEutils.getAnnInDocOrder(gateDoc, mainAnnoSet, annTypeToRem);
+					List<Annotation> sentenceAnnList_2 = GATEutils.getAnnInDocOrder(gateDoc, FreelingParser.mainAnnSet + "_SPA", annTypeToRem);
 					Set<Annotation> sentenceSet = new HashSet<Annotation>();
 					sentenceSet.addAll(sentenceAnnList_1);
 					sentenceSet.addAll(sentenceAnnList_2);
@@ -510,39 +582,37 @@ public class GROBIDloader {
 
 				if(annIdToRemove.size() > 0) {
 					for(Integer annIdToRem : annIdToRemove) {
-						Annotation annToRem = gateDoc.getAnnotations("paperStrcutre").get(annIdToRem);
+						Annotation annToRem = gateDoc.getAnnotations(mainAnnoSet).get(annIdToRem);
 						if(annToRem != null) {
-							gateDoc.getAnnotations("paperStrcutre").remove(annToRem);
+							gateDoc.getAnnotations(mainAnnoSet).remove(annToRem);
 						}
-						
+
 						annToRem = gateDoc.getAnnotations(sentenceAnnoSet).get(annIdToRem);
 						if(annToRem != null) {
-							gateDoc.getAnnotations(sentenceAnnoSet).remove(annToRem);
+							gateDoc.getAnnotations(FreelingParser.mainAnnSet + "_SPA").remove(annToRem);
 						}
 					}
 				}
 
 			}
 		}
-		
-		// Remove all the annotation ids of sentences to remove - with type inputSentenceAStypeAppo + "_OLD"
-		/*
+
+		// Remove all the annotation ids of sentences to remove - with type sentenceAnnoType + "_OLD"		
 		if(annIdOfOldSentences != null && annIdOfOldSentences.size() > 0) {
 			for(Integer annIdOfOldSent : annIdOfOldSentences) {
 				if(annIdOfOldSent != null) {
-					Annotation sentenceAnn = sentenceMarkup.get(inputSentenceAStypeAppo + "_OLD").get(annIdOfOldSent);
+					Annotation sentenceAnn = originalSentenceAnnoSet.get(sentenceAnnoType + "_OLD").get(annIdOfOldSent);
 					if(sentenceAnn != null) {
-						sentenceMarkup.remove(sentenceAnn);
+						originalSentenceAnnoSet.remove(sentenceAnn);
 					}
 				}
 			}
 		}
-		*/
 
 		return gateDoc;
 	}
-	
-	
+
+
 	/**
 	 * Internal utility function to add a sentence annotation of type outputAStypeAppo to the annotation sets outputAs
 	 * and outputAsOriginal, starting at startNode, ending at endNode and with features map equal to fm.
@@ -567,14 +637,17 @@ public class GROBIDloader {
 		try {
 			// Check if not header in sentence - if header in sentence, remove it
 			List<String> headersAnnName = new ArrayList<String>();
-			headersAnnName.add("H1");
-			headersAnnName.add("abstract");
-			headersAnnName.add("figure");
-			headersAnnName.add("table");
-			headersAnnName.add("header");
+			headersAnnName.add(paperTitleAnnoType);
+			headersAnnName.add(secTitleAnnoType);
+			headersAnnName.add(affiliationAnnoType);
+			headersAnnName.add(authorAnnoType);
+			headersAnnName.add(addressAnnoType);
+			headersAnnName.add(keywordsAnnoType);
+			headersAnnName.add(figureAnnoType);
+			headersAnnName.add(tableAnnoType);
 
 			for(String headName : headersAnnName) {
-				AnnotationSet headersAnns = doc.getAnnotations("paperStructure").get(headName, startNode, endNode);
+				AnnotationSet headersAnns = doc.getAnnotations(mainAnnoSet).get(headName, startNode, endNode);
 				if(headersAnns != null && headersAnns.size() > 0) {
 					Iterator<Annotation> headersAnnsIter = headersAnns.iterator();
 					while(headersAnnsIter.hasNext()) {

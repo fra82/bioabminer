@@ -22,9 +22,23 @@ public class BioABexample {
 		BioABminer.initNLP("/home/ronzano/Desktop/Hackathon_PLN/BioAbMinerConfig.properties");
 		
 		
-		Document doc = BioABminer.getDocumentFormPDF("/home/ronzano/Downloads/5416-4761-1-PB.pdf");
+		// PDF TEST		
+		Document doc = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/10.1.1.107.4029.pdf");
 		BioABminer.extractNLPfeatures(doc);
-		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Downloads/BioABdocument_PDF.xml");
+		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/10.1.1.107.4029.xml");
+		
+		doc = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5414-4759-1-PB.pdf");
+		BioABminer.extractNLPfeatures(doc);
+		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5414-4759-1-PB.xml");
+		
+		doc = BioABminer.getDocumentFormPDF("/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5420-4765-1-PB.pdf");
+		BioABminer.extractNLPfeatures(doc);
+		GATEfiles.storeGateXMLToFile(doc, "/home/ronzano/Desktop/Hackathon_PLN/PDF_TEST/5420-4765-1-PB.xml");
+		
+		System.out.println("Execution terminated");
+		
+		System.exit(1);
+		
 		
 		/*
 		// Parse GATE XML documents and store abbreviations as GATE text annotations
