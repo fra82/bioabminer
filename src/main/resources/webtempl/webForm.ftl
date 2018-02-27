@@ -54,7 +54,8 @@ $(document).ready(function() {
 	<div style="text-align:center;" class="sendForm">
 		<h2>Process text:</h2>
 		<form action="fileUpload" method="post" name="TEXTform" id="TEXTformID" target="_blank">
-		<textarea style="width:99%;height:250px;" name="textToAnalyze" id="textToAnalyzeID">Type here the text to process by means of BioAB miner:</textarea>
+		<textarea style="width:99%;height:250px;" name="textToAnalyze" id="textToAnalyzeID"> Entre otros factores, se debe tener en cuenta que estos pacientes
+		 presentan un riesgo adicional de ETEV debido a la propia obesidad (IMC>30). Tras la cirugía bariátrica el riesgo de padecer eventos tromboembólicos varía según las series consultadas. En líneas generales, se estima que el peligro de EP (embolia pulmonar) es del 0,8% y el de TVP (trombosis venosa profunda) de 1,7%. La mortalidad global por ETEV se estima del 0,1 al 2%.</textarea>
 		<div class="buttonSubmit">
 			<button id="submitButton" type="submit" class="buttonStyle">Extract abbreviations!</button>
 		</div>

@@ -238,6 +238,7 @@ public class BioABminer {
 			}
 
 			// Instantiate BioAB Type Classifier
+			/*
 			try {
 				Gate.getCreoleRegister().registerComponent(BioABabbrvTypeClassifier.class);
 
@@ -256,6 +257,7 @@ public class BioABminer {
 				logger.error("\nError loading BioAB spotter ---> " + e.getMessage());
 				e.printStackTrace();
 			}
+			*/
 
 			// Instantiate BioAB LF Spotter
 			try {
@@ -457,6 +459,7 @@ public class BioABminer {
 				e.printStackTrace();
 			}
 			
+			/*
 			try {
 				synchronized(BioABabbrvTypeClassifierSynch) {
 					BioABabbrvTypeClassifier_Resource.setDocument(gateDocToParse);
@@ -467,7 +470,8 @@ public class BioABminer {
 				logger.error("\nError parsing GATE document by BioAB Type Classifier - have you initialized BioABminet by calling BioABminer.initAll(String bioABminerPropertyFilePath)? ---> " + e.getMessage());
 				e.printStackTrace();
 			}
-
+			*/
+			
 			Set<String> abbrevTypes = gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).getAllTypes();
 			for(String abbrevType : abbrevTypes) {
 				System.out.println("    SPOTTED ABBREV : " + abbrevType + " > " + gateDocToParse.getAnnotations(BioABabbrvSpotter.mainAnnSet).get(abbrevType).size());

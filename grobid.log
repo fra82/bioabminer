@@ -10570,3 +10570,55 @@ Error parsing GATE document by MATE - have you initialized BioABminet by calling
 26 Feb 2018 20:05.02 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
 26 Feb 2018 20:05.03 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
 26 Feb 2018 20:05.18 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:48.05 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 01:48.05 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 01:48.05 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 01:48.05 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 01:48.05 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 01:48.06 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:48.06 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:48.33 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 01:48.33 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 01:48.33 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 01:48.33 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 01:48.33 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 01:48.33 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:48.33 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:49.03 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 01:49.03 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 01:49.03 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 01:49.03 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 01:49.03 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 01:49.04 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:49.04 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:49.28 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:49.29 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:50.17 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 01:50.17 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 01:50.17 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 01:50.17 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 01:50.17 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 01:50.17 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:50.17 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:50.38 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 01:50.39 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 02:04.23 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 02:04.23 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 02:04.23 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 02:04.23 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 02:04.23 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 02:04.24 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 02:04.51 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 02:04.51 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 02:04.51 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 02:04.51 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 02:04.51 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 02:04.51 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 02:04.52 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 02:06.47 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1 as GATE home
+27 Feb 2018 02:06.47 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/plugins as installed plug-ins directory.
+27 Feb 2018 02:06.47 [INFO ] Gate                      - Using /home/ronzano/GATE_8_4_1/gate.xml as site configuration file.
+27 Feb 2018 02:06.47 [INFO ] Gate                      - Using /home/ronzano/.gate.xml as user configuration file
+27 Feb 2018 02:06.47 [INFO ] Gate                      - Using /home/ronzano/.gate.session as user session file
+27 Feb 2018 02:06.47 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources
+27 Feb 2018 02:06.48 [INFO ] Manage                    - Set resource folder equal to: /home/ronzano/Desktop/Hackathon_PLN/BioAbMinerResources

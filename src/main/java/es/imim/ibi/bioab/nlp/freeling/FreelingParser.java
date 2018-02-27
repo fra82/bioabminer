@@ -230,11 +230,11 @@ public class FreelingParser extends AbstractLanguageAnalyser implements Processi
 			logger.info("Initializing Freeling (language " + lang + ")...");
 
 			// System.loadLibrary("libfreeling_javaAPI");
-			System.load("/usr/local/FreeLing-4.0/lib/libfreeling-4.0.so");
-			System.load("/home/ronzano/Downloads/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
+			// System.load("/usr/local/FreeLing-4.0/lib/libfreeling-4.0.so");
+			// System.load("/home/ronzano/Downloads/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
 			// Laptop
-			// System.load("/usr/local/lib/libfreeling-4.0.so");
-			// System.load("/home/ronzano/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
+			System.load("/usr/local/lib/libfreeling-4.0.so");
+			System.load("/home/ronzano/FreeLing-4.0/APIs/java/libfreeling_javaAPI.so");
 
 			Util.initLocale("default");
 
